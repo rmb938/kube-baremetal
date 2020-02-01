@@ -1,0 +1,33 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discovery
+  namespace: system
+  labels:
+    control-plane: discovery
+spec:
+  selector:
+    matchLabels:
+      control-plane: discovery
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        control-plane: discovery
+    spec:
+      containers:
+      - command:
+        - /discovery
+        image: discovery:latest
+        name: discovery
+        ports:
+          - containerPort: 8081
+        resources:
+          limits:
+            cpu: 100m
+            memory: 30Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+      terminationGracePeriodSeconds: 10

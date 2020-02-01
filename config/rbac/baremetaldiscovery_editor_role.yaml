@@ -1,0 +1,26 @@
+# permissions to do edit baremetaldiscoveries.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: baremetaldiscovery-editor-role
+rules:
+- apiGroups:
+  - baremetal.com.rmb938
+  resources:
+  - baremetaldiscoveries
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - baremetal.com.rmb938
+  resources:
+  - baremetaldiscoveries/status
+  verbs:
+  - get
+  - patch
+  - update

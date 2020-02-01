@@ -1,0 +1,52 @@
+
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: mutating-webhook-configuration
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-baremetal-com-rmb938-v1alpha1-baremetaldiscovery
+  failurePolicy: Fail
+  name: mbaremetaldiscovery.kb.io
+  rules:
+  - apiGroups:
+    - baremetal.com.rmb938
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - baremetaldiscoveries
+
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: validating-webhook-configuration
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-baremetal-com-rmb938-v1alpha1-baremetaldiscovery
+  failurePolicy: Fail
+  name: vbaremetaldiscovery.kb.io
+  rules:
+  - apiGroups:
+    - baremetal.com.rmb938
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - baremetaldiscoveries

@@ -1,0 +1,7 @@
+domain: com.rmb938
+repo: github.com/rmb938/kube-baremetal
+resources:
+- group: baremetal
+  kind: BareMetalDiscovery
+  version: v1alpha1
+version: "2"
