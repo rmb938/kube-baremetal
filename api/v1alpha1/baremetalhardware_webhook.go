@@ -23,11 +23,11 @@ import (
 )
 
 // log is for logging in this package.
-var baremetaldiscoverylog = logf.Log.WithName("baremetaldiscovery-resource")
+var baremetalhardwarelog = logf.Log.WithName("baremetalhardware-resource")
 
 // THIS IS JUST A DUMMY FILE REAL WEBHOOK IMPLEMENTATION IS IN "github.com/rmb938/kube-baremetal/webhooks"
 
-func (r *BareMetalDiscovery) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (r *BareMetalHardware) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
@@ -35,41 +35,41 @@ func (r *BareMetalDiscovery) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-// +kubebuilder:webhook:path=/mutate-baremetal-com-rmb938-v1alpha1-baremetaldiscovery,mutating=true,failurePolicy=fail,groups=baremetal.com.rmb938,resources=baremetaldiscoveries,verbs=create;update,versions=v1alpha1,name=mbaremetaldiscovery.kb.io
+// +kubebuilder:webhook:path=/mutate-baremetal-com-rmb938-v1alpha1-baremetalhardware,mutating=true,failurePolicy=fail,groups=baremetal.com.rmb938,resources=baremetalhardwares,verbs=create;update,versions=v1alpha1,name=mbaremetalhardware.kb.io
 
-var _ webhook.Defaulter = &BareMetalDiscovery{}
+var _ webhook.Defaulter = &BareMetalHardware{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *BareMetalDiscovery) Default() {
-	baremetaldiscoverylog.Info("default", "name", r.Name)
+func (r *BareMetalHardware) Default() {
+	baremetalhardwarelog.Info("default", "name", r.Name)
 
 	// TODO(user): fill in your defaulting logic.
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-// +kubebuilder:webhook:verbs=create;update,path=/validate-baremetal-com-rmb938-v1alpha1-baremetaldiscovery,mutating=false,failurePolicy=fail,groups=baremetal.com.rmb938,resources=baremetaldiscoveries,versions=v1alpha1,name=vbaremetaldiscovery.kb.io
+// +kubebuilder:webhook:verbs=create;update,path=/validate-baremetal-com-rmb938-v1alpha1-baremetalhardware,mutating=false,failurePolicy=fail,groups=baremetal.com.rmb938,resources=baremetalhardwares,versions=v1alpha1,name=vbaremetalhardware.kb.io
 
-var _ webhook.Validator = &BareMetalDiscovery{}
+var _ webhook.Validator = &BareMetalHardware{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *BareMetalDiscovery) ValidateCreate() error {
-	baremetaldiscoverylog.Info("validate create", "name", r.Name)
+func (r *BareMetalHardware) ValidateCreate() error {
+	baremetalhardwarelog.Info("validate create", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object creation.
 	return nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *BareMetalDiscovery) ValidateUpdate(old runtime.Object) error {
-	baremetaldiscoverylog.Info("validate update", "name", r.Name)
+func (r *BareMetalHardware) ValidateUpdate(old runtime.Object) error {
+	baremetalhardwarelog.Info("validate update", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object update.
 	return nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *BareMetalDiscovery) ValidateDelete() error {
-	baremetaldiscoverylog.Info("validate delete", "name", r.Name)
+func (r *BareMetalHardware) ValidateDelete() error {
+	baremetalhardwarelog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil

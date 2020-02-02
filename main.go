@@ -27,6 +27,7 @@ import (
 
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
 	"github.com/rmb938/kube-baremetal/controllers"
+	"github.com/rmb938/kube-baremetal/webhooks"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -73,10 +74,16 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "BareMetalDiscovery")
 		os.Exit(1)
 	}
-	if err = (&baremetalv1alpha1.BareMetalDiscovery{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "BareMetalDiscovery")
+	(&webhooks.BareMetalDiscoveryWebhook{}).SetupWebhookWithManager(mgr)
+	if err = (&controllers.BareMetalHardwareReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("BareMetalHardware"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "BareMetalHardware")
 		os.Exit(1)
 	}
+	(&webhooks.BareMetalHardwareWebhook{}).SetupWebhookWithManager(mgr)
 	// +kubebuilder:scaffold:builder
 
 	signalHandler := ctrl.SetupSignalHandler()

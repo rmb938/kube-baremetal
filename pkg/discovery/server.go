@@ -59,13 +59,45 @@ func (s *server) discover(c *gin.Context) {
 		return
 	}
 
-	// TODO: find the (Cluster)BareMetalHardware
+	// TODO: find the ClusterBareMetalHardware
 	//  if exists don't do anything else
 
-	var discovery *baremetalv1alpha1.BareMetalDiscovery
+	hardwareList := &baremetalv1alpha1.BareMetalHardwareList{}
+	err := s.Client.List(context.Background(), hardwareList, client.MatchingFields{"spec.systemUUID": string(input.SystemUUID)})
+	if err != nil {
+		if apiError, ok := err.(apierrors.APIStatus); ok {
+			if apiError.Status().Code == 0 {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(int(apiError.Status().Code), apiError.Status())
+			}
+			c.Abort()
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+
+	switch len(hardwareList.Items) {
+	case 0:
+		// no hardware found so continue
+		break
+	case 1:
+		// one hardware found so we are done
+		c.Status(http.StatusNoContent)
+		return
+	default:
+		// multiple hardware found so error
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "hardware already exists but multiple times, someone messed up."})
+		c.Abort()
+		return
+	}
+
+	var bmd *baremetalv1alpha1.BareMetalDiscovery
 
 	discoveryList := &baremetalv1alpha1.BareMetalDiscoveryList{}
-	err := s.Client.List(context.Background(), discoveryList, client.MatchingFields{"spec.systemUUID": string(input.SystemUUID)})
+	err = s.Client.List(context.Background(), discoveryList, client.MatchingFields{"spec.systemUUID": string(input.SystemUUID)})
 	if err != nil {
 		if apiError, ok := err.(apierrors.APIStatus); ok {
 			if apiError.Status().Code == 0 {
@@ -89,7 +121,7 @@ func (s *server) discover(c *gin.Context) {
 		break
 	case 1:
 		s.logger.Info("Received discovery for server that is already discovered", "system-uuid", input.SystemUUID)
-		discovery = &discoveryList.Items[0]
+		bmd = &discoveryList.Items[0]
 		break
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "discovery already exists but multiple times, someone messed up."})
@@ -97,13 +129,15 @@ func (s *server) discover(c *gin.Context) {
 		return
 	}
 
-	if discovery != nil {
+	// TODO: allow secure discovery by checking if the hardware is already set
+	//   if it is do nothing otherwise set it
+	if bmd != nil {
 		// an existing discovery was found so we don't need to do anything
 		c.Status(http.StatusNoContent)
 		return
 	}
 
-	discovery = &baremetalv1alpha1.BareMetalDiscovery{
+	bmd = &baremetalv1alpha1.BareMetalDiscovery{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: string(input.SystemUUID),
 		},
@@ -113,7 +147,7 @@ func (s *server) discover(c *gin.Context) {
 		},
 	}
 
-	err = s.Client.Create(context.Background(), discovery)
+	err = s.Client.Create(context.Background(), bmd)
 	if err != nil {
 		if apiError, ok := err.(apierrors.APIStatus); ok {
 			if apiError.Status().Code == 0 {

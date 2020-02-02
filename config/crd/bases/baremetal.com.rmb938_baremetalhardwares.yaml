@@ -6,32 +6,32 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.4
   creationTimestamp: null
-  name: baremetaldiscoveries.baremetal.com.rmb938
+  name: baremetalhardwares.baremetal.com.rmb938
 spec:
   additionalPrinterColumns:
-  - JSONPath: .spec.hardware.cpu.modelName
+  - JSONPath: .status.hardware.cpu.modelName
     name: CPU Model
     type: string
-  - JSONPath: .spec.hardware.cpu.cpus
+  - JSONPath: .status.hardware.cpu.cpus
     name: CPU Count
     type: string
-  - JSONPath: .spec.hardware.ram
+  - JSONPath: .status.hardware.ram
     name: Ram
     type: string
   group: baremetal.com.rmb938
   names:
-    kind: BareMetalDiscovery
-    listKind: BareMetalDiscoveryList
-    plural: baremetaldiscoveries
+    kind: BareMetalHardware
+    listKind: BareMetalHardwareList
+    plural: baremetalhardwares
     shortNames:
-    - bmd
-    singular: baremetaldiscovery
-  scope: Cluster
+    - bmh
+    singular: baremetalhardware
+  scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: BareMetalDiscovery is the Schema for the baremetaldiscoveries API
+      description: BareMetalHardware is the Schema for the baremetalhardwares API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -46,7 +46,60 @@ spec:
         metadata:
           type: object
         spec:
-          description: BareMetalDiscoverySpec defines the desired state of BareMetalDiscovery
+          description: BareMetalHardwareSpec defines the desired state of BareMetalHardware
+          properties:
+            canProvision:
+              description: Can the hardware be provisioned into an instance
+              type: boolean
+            imageDrive:
+              description: The drive to install the image onto
+              type: string
+            nics:
+              description: The nics that should be configured
+              items:
+                properties:
+                  bond:
+                    description: Bond information for the nic
+                    nullable: true
+                    properties:
+                      interfaces:
+                        description: The nic names to bond together
+                        items:
+                          type: string
+                        minItems: 1
+                        type: array
+                      mode:
+                        description: The bonding mode
+                        enum:
+                        - balance-rr
+                        - active-backup
+                        - balance-xor
+                        - lacp
+                        - broadcast
+                        - balance-tlb
+                        - balance-alb
+                        type: string
+                    required:
+                    - interfaces
+                    type: object
+                  name:
+                    description: The name of the nic
+                    type: string
+                required:
+                - name
+                type: object
+              type: array
+            systemUUID:
+              description: UID is a type that holds unique ID values, including UUIDs.  Because
+                we don't ONLY use UUIDs, this is an alias to string.  Being a type
+                captures intent and helps make sure that UIDs and names do not get
+                conflated.
+              type: string
+          required:
+          - systemUUID
+          type: object
+        status:
+          description: BareMetalHardwareStatus defines the observed state of BareMetalHardware
           properties:
             hardware:
               description: The hardware that the discovered system contains
@@ -125,17 +178,6 @@ spec:
               - ram
               - storage
               type: object
-            systemUUID:
-              description: UID is a type that holds unique ID values, including UUIDs.  Because
-                we don't ONLY use UUIDs, this is an alias to string.  Being a type
-                captures intent and helps make sure that UIDs and names do not get
-                conflated.
-              type: string
-          required:
-          - systemUUID
-          type: object
-        status:
-          description: BareMetalDiscoveryStatus defines the observed state of BareMetalDiscovery
           type: object
       type: object
   version: v1alpha1

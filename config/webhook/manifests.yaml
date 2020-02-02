@@ -24,6 +24,24 @@ webhooks:
     - UPDATE
     resources:
     - baremetaldiscoveries
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-baremetal-com-rmb938-v1alpha1-baremetalhardware
+  failurePolicy: Fail
+  name: mbaremetalhardware.kb.io
+  rules:
+  - apiGroups:
+    - baremetal.com.rmb938
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - baremetalhardwares
 
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -50,3 +68,21 @@ webhooks:
     - UPDATE
     resources:
     - baremetaldiscoveries
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-baremetal-com-rmb938-v1alpha1-baremetalhardware
+  failurePolicy: Fail
+  name: vbaremetalhardware.kb.io
+  rules:
+  - apiGroups:
+    - baremetal.com.rmb938
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - baremetalhardwares

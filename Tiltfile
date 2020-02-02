@@ -50,6 +50,8 @@ COPY .tiltbuild/discovery .
             "go.sum",
             "api",
             "controllers",
+            "webhook",
+            "webhooks"
         ],
     )
     local_resource(

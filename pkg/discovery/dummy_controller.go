@@ -43,6 +43,13 @@ func (r *DummyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
+	if err := mgr.GetFieldIndexer().IndexField(&baremetalv1alpha1.BareMetalHardware{}, "spec.systemUUID", func(rawObj runtime.Object) []string {
+		bmh := rawObj.(*baremetalv1alpha1.BareMetalHardware)
+		return []string{string(bmh.Spec.SystemUUID)}
+	}); err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&baremetalv1alpha1.BareMetalDiscovery{}).
 		Complete(r)

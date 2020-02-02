@@ -49,16 +49,16 @@ type BareMetalDiscoveryHardwareStorage struct {
 	Size resource.Quantity `json:"size"`
 
 	// If the device is a rotational device
-	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Required
 	Rotational bool `json:"rotational"`
 
 	// If the device supports trim
-	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Required
 	Trim bool `json:"trim"`
 
 	// The device's serial number
-	// +kubebuilder:validation:Optional
-	Serial string `json:"serial,omitempty"`
+	// +kubebuilder:validation:Required
+	Serial string `json:"serial"`
 }
 
 type BareMetalDiscoveryHardwareNIC struct {

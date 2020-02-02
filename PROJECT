@@ -4,4 +4,7 @@ resources:
 - group: baremetal
   kind: BareMetalDiscovery
   version: v1alpha1
+- group: baremetal
+  kind: BareMetalHardware
+  version: v1alpha1
 version: "2"

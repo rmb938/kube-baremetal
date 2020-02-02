@@ -1,0 +1,7 @@
+apiVersion: baremetal.com.rmb938/v1alpha1
+kind: BareMetalHardware
+metadata:
+  name: baremetalhardware-sample
+spec:
+  # Add fields here
+  foo: bar
