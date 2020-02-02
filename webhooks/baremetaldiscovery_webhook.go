@@ -78,6 +78,7 @@ func (w *BareMetalDiscoveryWebhook) ValidateUpdate(obj runtime.Object, old runti
 
 	var allErrs field.ErrorList
 
+	// Never allow changing system uuid
 	if r.Spec.SystemUUID != oldBMD.Spec.SystemUUID {
 		allErrs = append(allErrs, field.Forbidden(
 			field.NewPath("spec").Child("systemUUID"),
@@ -85,6 +86,7 @@ func (w *BareMetalDiscoveryWebhook) ValidateUpdate(obj runtime.Object, old runti
 		))
 	}
 
+	// never allow changing the hardware is already set
 	if oldBMD.Spec.Hardware != nil && reflect.DeepEqual(r.Spec.Hardware, oldBMD.Spec.Hardware) == false {
 		allErrs = append(allErrs, field.Forbidden(
 			field.NewPath("spec").Child("hardware"),

@@ -35,6 +35,10 @@ const (
 	BondModeBalanceALB   BondMode = "balance-alb"
 )
 
+var (
+	BareMetalHardwareFinalizer = "bmh." + FinalizerPrefix
+)
+
 type BareMetalHardwareNICBond struct {
 	// The nic names to bond together
 	// +kubebuilder:validation:MinItems=1
@@ -89,6 +93,8 @@ type BareMetalHardwareStatus struct {
 	// The hardware that the discovered system contains
 	// +kubebuilder:validation:Optional
 	Hardware *BareMetalDiscoveryHardware `json:"hardware,omitempty"`
+
+	// TODO: taints (instances need to tolerate them)
 
 	// TODO: instanceRef
 

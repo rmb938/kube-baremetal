@@ -24,6 +24,8 @@ import (
 )
 
 var (
+	FinalizerPrefix = "finalizer." + GroupVersion.Group
+
 	// GroupVersion is group version used to register these objects
 	GroupVersion = schema.GroupVersion{Group: "baremetal.com.rmb938", Version: "v1alpha1"}
 

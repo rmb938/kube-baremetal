@@ -40,18 +40,21 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 	_ = context.Background()
 	_ = r.Log.WithValues("baremetalhardware", req.NamespacedName)
 
-	// TODO: prevent deletion with finalizer when instanceRef is not nil
+	// TODO: deletion
+	//  taint with NoProvision
+	//  if instanceRef is not nil prevent deletion and event saying there's an instance still
 
-	// TODO: conditions and events
+	// TODO: taint with NoProvision when CanProvision is false
+	//   this should be the first thing we do if not deleting
 
 	// TODO: if hardware is nil find discovery any copy it
+	//  if can't find discovery event
+	//  once copied set HardwareSet condition to true
 
-	// TODO: provisionable condition
-	//  true when all of the following are met:
-	//	  CanProvision is true
-	//	  ImageDrive is set and in the hardware
-	//    At least one nic is set and assigned a network and in the hardware
-	//    instanceRef is nil
+	// TODO: conditions
+	// 	ImageDriveValid - image drive is valid
+	//  NicsAreValid - nics are valid
+	//  HardwareSet - hardware is set
 
 	return ctrl.Result{}, nil
 }
