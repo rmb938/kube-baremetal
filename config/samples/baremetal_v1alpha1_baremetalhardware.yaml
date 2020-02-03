@@ -3,5 +3,4 @@ kind: BareMetalHardware
 metadata:
   name: baremetalhardware-sample
 spec:
-  # Add fields here
-  foo: bar
+  systemUUID: 2386e162-2431-4c1c-b7fb-fffadccf92e4

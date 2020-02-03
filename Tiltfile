@@ -49,6 +49,7 @@ COPY .tiltbuild/discovery .
             "go.mod",
             "go.sum",
             "api",
+            "apis",
             "controllers",
             "webhook",
             "webhooks"
@@ -109,6 +110,7 @@ COPY .tiltbuild/discovery .
     k8s_yaml(blob(yaml))
 
     k8s_resource('kube-baremetal-discovery', port_forwards=8081)
+    # k8s_resource('kube-baremetal-discovery', port_forwards='0.0.0.0:8081') - this is available in 0.11.4
 
 
 # Prepull all the cert-manager images to your local environment and then load them directly into kind. This speeds up

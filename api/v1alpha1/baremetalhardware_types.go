@@ -16,13 +16,17 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	conditionv1 "github.com/rmb938/kube-baremetal/apis/condition/v1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// +kubebuilder:validation:Enum=balance-rr;active-backup;balance-xor;lacp;broadcast;balance-tlb;balance-alb
 type BondMode string
 
 const (
@@ -37,6 +41,9 @@ const (
 
 var (
 	BareMetalHardwareFinalizer = "bmh." + FinalizerPrefix
+
+	BareMetalHardwareTaintKeyNotReady   = "hardware." + GroupVersion.Group + "/not-ready"
+	BareMetalHardwareTaintKeyNoSchedule = "hardware." + GroupVersion.Group + "/unschedulable"
 )
 
 type BareMetalHardwareNICBond struct {
@@ -47,7 +54,6 @@ type BareMetalHardwareNICBond struct {
 
 	// The bonding mode
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum=balance-rr;active-backup;balance-xor;lacp;broadcast;balance-tlb;balance-alb
 	Mode BondMode `json:"mode,omitempty"`
 }
 
@@ -78,15 +84,20 @@ type BareMetalHardwareSpec struct {
 
 	// The drive to install the image onto
 	// +kubebuilder:validation:Optional
-	ImageDrive string `json:"imageDrive"`
+	ImageDrive string `json:"imageDrive,omitempty"`
 
 	// The nics that should be configured
 	// +kubebuilder:validation:Optional
 	NICS []BareMetalHardwareNIC `json:"nics,omitempty"`
+
+	// Taints on the hardware
+	// +kubebuilder:validation:Optional
+	Taints []corev1.Taint `json:"taints,omitempty"`
 }
 
 // BareMetalHardwareStatus defines the observed state of BareMetalHardware
 type BareMetalHardwareStatus struct {
+	conditionv1.StatusConditions `json:",inline"`
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
@@ -94,11 +105,7 @@ type BareMetalHardwareStatus struct {
 	// +kubebuilder:validation:Optional
 	Hardware *BareMetalDiscoveryHardware `json:"hardware,omitempty"`
 
-	// TODO: taints (instances need to tolerate them)
-
 	// TODO: instanceRef
-
-	// TODO: conditions
 }
 
 // +kubebuilder:object:root=true
@@ -125,6 +132,14 @@ type BareMetalHardwareList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []BareMetalHardware `json:"items"`
 }
+
+type BareMetalHardwareConditionType conditionv1.ConditionType
+
+const (
+	ConditionTypeHardwareSet     BareMetalHardwareConditionType = "HardwareSet"
+	ConditionTypeImageDriveValid BareMetalHardwareConditionType = "ImageDriveValid"
+	ConditionTypeNicsValid       BareMetalHardwareConditionType = "NicsValid"
+)
 
 func init() {
 	SchemeBuilder.Register(&BareMetalHardware{}, &BareMetalHardwareList{})
