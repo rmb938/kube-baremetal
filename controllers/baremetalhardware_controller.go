@@ -17,7 +17,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -42,7 +41,7 @@ type BareMetalHardwareReconciler struct {
 	Recorder record.EventRecorder
 }
 
-// +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update
+// +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=baremetal.com.rmb938,resources=baremetalhardwares,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=baremetal.com.rmb938,resources=baremetalhardwares/status,verbs=get;update;patch
 
@@ -82,7 +81,7 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 				return ctrl.Result{}, err
 			}
 
-			r.Recorder.Event(bmh, corev1.EventTypeNormal, "HardwareNotSchedulable", fmt.Sprintf("Hardware %s status is now HardwareNotSchedulable", bmh.Name))
+			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareNotSchedulableEventReason, "Hardware %s status is now HardwareNotSchedulable", bmh.Name)
 			return ctrl.Result{}, nil
 		}
 
@@ -91,16 +90,6 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 
 		// Done deleting so remove finalizer
 		baremetalapi.RemoveFinalizer(bmh, baremetalv1alpha1.BareMetalHardwareFinalizer)
-		err := r.Update(ctx, bmh)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
-	}
-
-	// add the finalizer
-	if baremetalapi.HasFinalizer(bmh, baremetalv1alpha1.BareMetalHardwareFinalizer) == false {
-		bmh.Finalizers = append(bmh.Finalizers, baremetalv1alpha1.BareMetalHardwareFinalizer)
 		err := r.Update(ctx, bmh)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -126,7 +115,7 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 				return ctrl.Result{}, err
 			}
 
-			r.Recorder.Event(bmh, corev1.EventTypeNormal, "HardwareSchedulable", fmt.Sprintf("Hardware %s status is now HardwareSchedulable", bmh.Name))
+			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareNotSchedulableEventReason, "Hardware %s status is now HardwareSchedulable", bmh.Name)
 			return ctrl.Result{}, nil
 		}
 	} else {
@@ -151,31 +140,20 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 				return ctrl.Result{}, err
 			}
 
-			r.Recorder.Event(bmh, corev1.EventTypeNormal, "HardwareNotSchedulable", fmt.Sprintf("Hardware %s status is now HardwareNotSchedulable", bmh.Name))
+			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareSchedulableEventReason, "Hardware %s status is now HardwareNotSchedulable", bmh.Name)
 			return ctrl.Result{}, nil
 		}
 	}
 
-	// TODO: if conditions are not met set BareMetalHardwareTaintKeyNotReady taint
-
-	// TODO: if hardware is nil find discovery any copy it
-	//  if can't find discovery event
-	//  once copied set HardwareSet condition to true
-
-	// TODO: conditions
-	// 	ImageDriveValid - image drive is valid
-	//  NicsValid - nics are valid
-	//  HardwareSet - hardware is set
-
-	imageDriveValidCond := bmh.Status.GetCondition(conditionv1.ConditionType(baremetalv1alpha1.ConditionTypeImageDriveValid))
-	nicsValidCond := bmh.Status.GetCondition(conditionv1.ConditionType(baremetalv1alpha1.ConditionTypeNicsValid))
-	hardwareSetCond := bmh.Status.GetCondition(conditionv1.ConditionType(baremetalv1alpha1.ConditionTypeHardwareSet))
+	imageDriveValidCond := bmh.Status.GetCondition(baremetalv1alpha1.BareMetalHardwareConditionTypeImageDriveValid)
+	nicsValidCond := bmh.Status.GetCondition(baremetalv1alpha1.BareMetalHardwareConditionTypeNicsValid)
+	hardwareSetCond := bmh.Status.GetCondition(baremetalv1alpha1.BareMetalHardwareConditionTypeHardwareSet)
 
 	// If conditions are met remove BareMetalHardwareTaintKeyNotReady taint
 	//  if they are not met add the taint
-	if imageDriveValidCond != nil && imageDriveValidCond.Status == conditionv1.ConditionStatusTrue &&
-		nicsValidCond != nil && nicsValidCond.Status == conditionv1.ConditionStatusTrue &&
-		hardwareSetCond != nil && hardwareSetCond.Status == conditionv1.ConditionStatusTrue {
+	if (imageDriveValidCond != nil && imageDriveValidCond.Status == conditionv1.ConditionStatusTrue) &&
+		(nicsValidCond != nil && nicsValidCond.Status == conditionv1.ConditionStatusTrue) &&
+		(hardwareSetCond != nil && hardwareSetCond.Status == conditionv1.ConditionStatusTrue) {
 		taintIndex := -1
 		for idx, t := range bmh.Spec.Taints {
 			if t.Key == baremetalv1alpha1.BareMetalHardwareTaintKeyNotReady {
@@ -191,7 +169,7 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 				return ctrl.Result{}, err
 			}
 
-			r.Recorder.Event(bmh, corev1.EventTypeNormal, "HardwareReady", fmt.Sprintf("Hardware %s status is now HardwareReady", bmh.Name))
+			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareReadyEventReason, "Hardware %s status is now HardwareReady", bmh.Name)
 			return ctrl.Result{}, nil
 		}
 	} else {
@@ -216,9 +194,262 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 				return ctrl.Result{}, err
 			}
 
-			r.Recorder.Event(bmh, corev1.EventTypeNormal, "HardwareNotReady", fmt.Sprintf("Hardware %s status is now HardwareNotReady", bmh.Name))
+			r.Recorder.Eventf(bmh, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalHardwareNotReadyEventReason, "Hardware %s status is now HardwareNotReady", bmh.Name)
 			return ctrl.Result{}, nil
 		}
+	}
+
+	if bmh.Status.Hardware != nil {
+		if hardwareSetCond == nil || hardwareSetCond.Reason != baremetalv1alpha1.BareMetalHardwareHardwareIsSetConditionReason {
+			nowTime := metav1.NewTime(r.Clock.Now())
+			err := bmh.Status.SetCondition(&conditionv1.StatusCondition{
+				Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeHardwareSet,
+				Status:             conditionv1.ConditionStatusTrue,
+				LastTransitionTime: &nowTime,
+				Reason:             baremetalv1alpha1.BareMetalHardwareHardwareIsSetConditionReason,
+				Message:            "hardware information is set",
+			})
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			err = r.Status().Update(ctx, bmh)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
+		}
+
+		if len(bmh.Spec.NICS) > 0 {
+			foundAllNics := true
+
+			for _, nic := range bmh.Spec.NICS {
+				if nic.Bond != nil {
+					foundAllBondNics := true
+
+					for _, bondNicName := range nic.Bond.Interfaces {
+						foundNic := false
+
+						for _, hardwareNic := range bmh.Status.Hardware.NICS {
+							if hardwareNic.Name == bondNicName {
+								foundNic = true
+								break
+							}
+						}
+
+						if foundNic == false {
+							foundAllBondNics = false
+							break
+						}
+					}
+
+					if foundAllBondNics == false {
+						foundAllNics = false
+						break
+					}
+				} else {
+					foundNic := false
+
+					for _, hardwareNic := range bmh.Status.Hardware.NICS {
+						if hardwareNic.Name == nic.Name {
+							foundNic = true
+							break
+						}
+					}
+
+					if foundNic == false {
+						foundAllNics = false
+						break
+					}
+				}
+			}
+			if foundAllNics {
+				if nicsValidCond == nil || nicsValidCond.Reason != baremetalv1alpha1.BareMetalHardwareValidNicsConditionReason {
+					nowTime := metav1.NewTime(r.Clock.Now())
+					err := bmh.Status.SetCondition(&conditionv1.StatusCondition{
+						Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeNicsValid,
+						Status:             conditionv1.ConditionStatusTrue,
+						LastTransitionTime: &nowTime,
+						Reason:             baremetalv1alpha1.BareMetalHardwareValidNicsConditionReason,
+						Message:            "nics are found",
+					})
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					err = r.Status().Update(ctx, bmh)
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					r.Recorder.Event(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareValidNicsConditionReason, "Nics are found in hardware nics list")
+					return ctrl.Result{}, nil
+				}
+			} else {
+				if nicsValidCond == nil || nicsValidCond.Reason != baremetalv1alpha1.BareMetalHardwareInvalidNicsConditionReason {
+					nowTime := metav1.NewTime(r.Clock.Now())
+					err := bmh.Status.SetCondition(&conditionv1.StatusCondition{
+						Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeNicsValid,
+						Status:             conditionv1.ConditionStatusFalse,
+						LastTransitionTime: &nowTime,
+						Reason:             baremetalv1alpha1.BareMetalHardwareInvalidNicsConditionReason,
+						Message:            "invalid nics",
+					})
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					err = r.Status().Update(ctx, bmh)
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					r.Recorder.Event(bmh, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalHardwareInvalidNicsConditionReason, "Could not find nics in hardware nics list")
+					return ctrl.Result{}, nil
+				}
+			}
+		} else {
+			if nicsValidCond == nil || nicsValidCond.Reason != baremetalv1alpha1.BareMetalHardwareNicsAreNotSetConditionReason {
+				nowTime := metav1.NewTime(r.Clock.Now())
+				err := bmh.Status.SetCondition(&conditionv1.StatusCondition{
+					Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeNicsValid,
+					Status:             conditionv1.ConditionStatusFalse,
+					LastTransitionTime: &nowTime,
+					Reason:             baremetalv1alpha1.BareMetalHardwareNicsAreNotSetConditionReason,
+					Message:            "nics are not set",
+				})
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				err = r.Status().Update(ctx, bmh)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				r.Recorder.Event(bmh, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalHardwareNicsAreNotSetConditionReason, "NICS are not set")
+				return ctrl.Result{}, nil
+			}
+		}
+
+		if len(bmh.Spec.ImageDrive) > 0 {
+			foundImageDrive := false
+
+			for _, storage := range bmh.Status.Hardware.Storage {
+				for storage.Name == bmh.Spec.ImageDrive {
+					foundImageDrive = true
+					break
+				}
+			}
+
+			if foundImageDrive {
+				if imageDriveValidCond == nil || imageDriveValidCond.Reason != baremetalv1alpha1.BareMetalHardwareValidImageDriveConditionReason {
+					nowTime := metav1.NewTime(r.Clock.Now())
+					err := bmh.Status.SetCondition(&conditionv1.StatusCondition{
+						Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeImageDriveValid,
+						Status:             conditionv1.ConditionStatusTrue,
+						LastTransitionTime: &nowTime,
+						Reason:             baremetalv1alpha1.BareMetalHardwareValidImageDriveConditionReason,
+						Message:            "found image drive",
+					})
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					err = r.Status().Update(ctx, bmh)
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					r.Recorder.Event(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareValidImageDriveConditionReason, "Found image drive in hardware storage list")
+					return ctrl.Result{}, nil
+				}
+			} else {
+				if imageDriveValidCond == nil || imageDriveValidCond.Reason != baremetalv1alpha1.BareMetalHardwareInvalidImageDriveConditionReason {
+					nowTime := metav1.NewTime(r.Clock.Now())
+					err := bmh.Status.SetCondition(&conditionv1.StatusCondition{
+						Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeImageDriveValid,
+						Status:             conditionv1.ConditionStatusFalse,
+						LastTransitionTime: &nowTime,
+						Reason:             baremetalv1alpha1.BareMetalHardwareInvalidImageDriveConditionReason,
+						Message:            "invalid image drive",
+					})
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					err = r.Status().Update(ctx, bmh)
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					r.Recorder.Event(bmh, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalHardwareInvalidImageDriveConditionReason, "Could not find image drive in hardware storage list")
+					return ctrl.Result{}, nil
+				}
+			}
+		} else {
+			if imageDriveValidCond == nil || imageDriveValidCond.Reason != baremetalv1alpha1.BareMetalHardwareImageDriveIsNotSetConditionReason {
+				nowTime := metav1.NewTime(r.Clock.Now())
+				err := bmh.Status.SetCondition(&conditionv1.StatusCondition{
+					Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeImageDriveValid,
+					Status:             conditionv1.ConditionStatusFalse,
+					LastTransitionTime: &nowTime,
+					Reason:             baremetalv1alpha1.BareMetalHardwareImageDriveIsNotSetConditionReason,
+					Message:            "image drive is not set",
+				})
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				err = r.Status().Update(ctx, bmh)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				r.Recorder.Event(bmh, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalHardwareImageDriveIsNotSetConditionReason, "Image Drive is not set in the spec")
+				return ctrl.Result{}, nil
+			}
+		}
+	} else {
+		if hardwareSetCond == nil || hardwareSetCond.Reason != baremetalv1alpha1.BareMetalHardwareHardwareIsNotSetConditionReason {
+			nowTime := metav1.NewTime(r.Clock.Now())
+			err := bmh.Status.SetCondition(&conditionv1.StatusCondition{
+				Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeHardwareSet,
+				Status:             conditionv1.ConditionStatusFalse,
+				LastTransitionTime: &nowTime,
+				Reason:             baremetalv1alpha1.BareMetalHardwareHardwareIsNotSetConditionReason,
+				Message:            "hardware information is not set",
+			})
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			err = r.Status().Update(ctx, bmh)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			r.Recorder.Event(bmh, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalHardwareHardwareIsNotSetConditionReason, "Hardware information is not set")
+			return ctrl.Result{}, nil
+		}
+
+		var bmd *baremetalv1alpha1.BareMetalDiscovery
+
+		discoveryList := &baremetalv1alpha1.BareMetalDiscoveryList{}
+		err := r.List(context.Background(), discoveryList, client.MatchingFields{"spec.systemUUID": string(bmh.Spec.SystemUUID)})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		switch len(discoveryList.Items) {
+		case 0:
+			r.Recorder.Eventf(bmh, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalHardwareDiscoveryNotFoundEventReason, "Could not find the discovery resource for the systemUUID of %s", bmh.Spec.SystemUUID)
+			return ctrl.Result{Requeue: true}, nil
+		case 1:
+			bmd = &discoveryList.Items[0]
+			break
+		default:
+			r.Recorder.Eventf(bmh, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalHardwareManyDiscoveryFoundEventReason, "Found multiple discovery resources for the systemUUID of %s", bmh.Spec.SystemUUID)
+			return ctrl.Result{Requeue: true}, nil
+		}
+
+		// TODO: discovery hardware may be nil due to "secure" discovery
+		//  check if it's nil and event and requeue if it is
+
+		bmh.Status.Hardware = bmd.Spec.Hardware.DeepCopy()
+		err = r.Status().Update(ctx, bmh)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareDiscoveryFoundEventReason, "Found discovery resource for the systemUUID of %s", bmh.Spec.SystemUUID)
+		return ctrl.Result{}, nil
 	}
 
 	return ctrl.Result{}, nil

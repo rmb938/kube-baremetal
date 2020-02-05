@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
+	baremetalapi "github.com/rmb938/kube-baremetal/api"
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
 	"github.com/rmb938/kube-baremetal/webhook"
 	"github.com/rmb938/kube-baremetal/webhook/admission"
@@ -55,6 +56,11 @@ func (w *BareMetalHardwareWebhook) Default(obj runtime.Object) {
 	baremetalhardwarelog.Info("default", "name", r.Name)
 
 	if r.DeletionTimestamp.IsZero() {
+		// add the finalizer
+		if baremetalapi.HasFinalizer(r, baremetalv1alpha1.BareMetalHardwareFinalizer) == false {
+			r.Finalizers = append(r.Finalizers, baremetalv1alpha1.BareMetalHardwareFinalizer)
+		}
+
 		// set the default nic bond mode
 		for _, nic := range r.Spec.NICS {
 			if nic.Bond != nil {
@@ -95,7 +101,7 @@ func (w *BareMetalHardwareWebhook) ValidateUpdate(obj runtime.Object, old runtim
 		))
 	}
 
-	// never allow changing hardware is already set
+	// never allow changing hardware if it is already set
 	if oldBMH.Status.Hardware != nil && reflect.DeepEqual(r.Status.Hardware, oldBMH.Status.Hardware) == false {
 		allErrs = append(allErrs, field.Forbidden(
 			field.NewPath("status").Child("hardware"),

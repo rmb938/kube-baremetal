@@ -65,7 +65,7 @@ type BareMetalHardwareNIC struct {
 	// Bond information for the nic
 	// +kubebuilder:validation:Optional
 	// +nullable
-	Bond *BareMetalHardwareNICBond `json:"bond"`
+	Bond *BareMetalHardwareNICBond `json:"bond,omitempty"`
 
 	// TODO: the network reference the nic is plugged into
 }
@@ -80,7 +80,7 @@ type BareMetalHardwareSpec struct {
 
 	// Can the hardware be provisioned into an instance
 	// +kubebuilder:validation:Optional
-	CanProvision bool `json:"canProvision,omitempty"`
+	CanProvision bool `json:"canProvision"`
 
 	// The drive to install the image onto
 	// +kubebuilder:validation:Optional
@@ -133,12 +133,34 @@ type BareMetalHardwareList struct {
 	Items           []BareMetalHardware `json:"items"`
 }
 
-type BareMetalHardwareConditionType conditionv1.ConditionType
-
 const (
-	ConditionTypeHardwareSet     BareMetalHardwareConditionType = "HardwareSet"
-	ConditionTypeImageDriveValid BareMetalHardwareConditionType = "ImageDriveValid"
-	ConditionTypeNicsValid       BareMetalHardwareConditionType = "NicsValid"
+	// Condition Types
+	BareMetalHardwareConditionTypeHardwareSet     conditionv1.ConditionType = "HardwareSet"
+	BareMetalHardwareConditionTypeImageDriveValid conditionv1.ConditionType = "ImageDriveValid"
+	BareMetalHardwareConditionTypeNicsValid       conditionv1.ConditionType = "NicsValid"
+
+	// Condition Reasons
+	BareMetalHardwareHardwareIsSetConditionReason    string = "HardwareIsSet"
+	BareMetalHardwareHardwareIsNotSetConditionReason string = "HardwareIsNotSet"
+
+	BareMetalHardwareValidImageDriveConditionReason    string = "ValidImageDrive"
+	BareMetalHardwareInvalidImageDriveConditionReason  string = "InvalidImageDrive"
+	BareMetalHardwareImageDriveIsNotSetConditionReason string = "ImageDriveIsNotSet"
+
+	BareMetalHardwareValidNicsConditionReason     string = "ValidNics"
+	BareMetalHardwareInvalidNicsConditionReason   string = "InvalidNics"
+	BareMetalHardwareNicsAreNotSetConditionReason string = "NicsAreNotSet"
+
+	// Event Reasons
+	BareMetalHardwareNotSchedulableEventReason string = "HardwareNotSchedulable"
+	BareMetalHardwareSchedulableEventReason    string = "HardwareSchedulable"
+
+	BareMetalHardwareReadyEventReason    string = "HardwareReady"
+	BareMetalHardwareNotReadyEventReason string = "HardwareNotReady"
+
+	BareMetalHardwareDiscoveryNotFoundEventReason  string = "DiscoveryNotFound"
+	BareMetalHardwareManyDiscoveryFoundEventReason string = "ManyDiscoveryFound"
+	BareMetalHardwareDiscoveryFoundEventReason     string = "DiscoveryFound"
 )
 
 func init() {

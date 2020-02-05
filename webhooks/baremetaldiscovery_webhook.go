@@ -65,7 +65,7 @@ func (w *BareMetalDiscoveryWebhook) ValidateCreate(obj runtime.Object) error {
 
 	baremetaldiscoverylog.Info("validate create", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object creation.
+	// TODO: make sure there is only 1 discovery for a given systemUUID
 	return nil
 }
 
@@ -86,7 +86,7 @@ func (w *BareMetalDiscoveryWebhook) ValidateUpdate(obj runtime.Object, old runti
 		))
 	}
 
-	// never allow changing the hardware is already set
+	// never allow changing the hardware if it is already set
 	if oldBMD.Spec.Hardware != nil && reflect.DeepEqual(r.Spec.Hardware, oldBMD.Spec.Hardware) == false {
 		allErrs = append(allErrs, field.Forbidden(
 			field.NewPath("spec").Child("hardware"),
