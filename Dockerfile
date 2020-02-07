@@ -13,18 +13,37 @@ RUN go mod download
 COPY main.go main.go
 COPY api/ api/
 COPY apis/ apis/
+COPY cmd/ cmd/
+COPY pkg/ pkg/
 COPY controllers/ controllers/
 COPY webhook/ webhook/
 COPY webhooks/ webhooks/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags '-extldflags "-static"' -o manager main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags '-extldflags "-static"' -o discovery cmd/discovery/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags '-extldflags "-static"' -o agent cmd/agent/main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
-WORKDIR /
-COPY --from=builder /workspace/manager .
-USER nonroot:nonroot
+FROM alpine:3.11 as alpine
 
-ENTRYPOINT ["/manager"]
+RUN mkdir -p /out/etc/apk && cp -r /etc/apk/* /out/etc/apk/
+
+RUN apk -U add --no-cache --initdb -p /out \
+  alpine-baselayout \
+  ca-certificates \
+  util-linux \
+  coreutils
+
+FROM scratch
+WORKDIR /
+COPY --from=alpine /out /
+
+COPY --from=builder /workspace/manager .
+COPY --from=builder /workspace/discovery .
+COPY --from=builder /workspace/agent .
+USER 1000:1000
+
+ENTRYPOINT []
+CMD []

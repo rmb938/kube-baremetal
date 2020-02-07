@@ -2,8 +2,10 @@ package discovery
 
 import (
 	"context"
+	"io/ioutil"
 	"net/http"
 
+	"github.com/gin-contrib/location"
 	"github.com/gin-gonic/gin"
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,10 +37,48 @@ func NewServer(address string, client client.Client) *server {
 func (s *server) Run() {
 	r := gin.Default()
 
+	r.Use(location.Default())
+
+	r.Static("/ipxe/files", "/discovery_files")
+
+	r.GET("/ipxe/boot", s.ipxeBoot)
+
 	r.PUT("/ready", s.ready)
 	r.POST("/discover", s.discover)
 
 	_ = r.Run(s.Address)
+}
+
+func (s *server) ipxeBoot(c *gin.Context) {
+	systemUUID := c.DefaultQuery("systemUUID", "")
+
+	if len(systemUUID) == 0 {
+
+		c.String(http.StatusOK, "#!ipxe\necho Chaining again with systemUUID\nchain %s", "boot?systemUUID=${uuid}")
+		return
+	}
+
+	// TODO: check if instance exists with systemUUID
+	//  if it does check if need to image or boot into os
+	//    if boot into os send ipxe boot into os
+	//    else send ipxe to boot into linuxkit
+	//  else send ipxe to boot into linuxkit
+
+	cmdLineBytes, err := ioutil.ReadFile("/discovery_files/linuxkit-agent-cmdline")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+
+	cmdLine := string(cmdLineBytes)
+
+	u := location.Get(c)
+
+	// TODO: add URL to cmdLine
+	cmdLine += " discovery_url=" + u.String()
+
+	c.String(http.StatusOK, "#!ipxe\necho Booting into imaging OS\ninitrd files/linuxkit-agent-initrd.img\nchain files/linuxkit-agent-kernel %s", cmdLine)
 }
 
 func (s *server) ready(c *gin.Context) {

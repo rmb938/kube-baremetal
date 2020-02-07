@@ -3,8 +3,11 @@ module github.com/rmb938/kube-baremetal
 go 1.13
 
 require (
+	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
+	github.com/gin-contrib/location v0.0.1
 	github.com/gin-gonic/gin v1.5.0
 	github.com/go-logr/logr v0.1.0
+	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/onsi/ginkgo v1.8.0
 	github.com/onsi/gomega v1.5.0
 	github.com/shirou/gopsutil v2.20.1+incompatible

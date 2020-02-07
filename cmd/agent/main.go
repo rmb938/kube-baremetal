@@ -31,10 +31,10 @@ type discoveryInput struct {
 
 type blockDevices struct {
 	Name    string `json:"name"`
-	Size    string `json:"size"`
-	Rota    string `json:"rota"`
+	Size    int64  `json:"size"`
+	Rota    bool   `json:"rota"`
 	Serial  string `json:"serial"`
-	DiscMax string `json:"disc-max"`
+	DiscMax int64  `json:"disc-max"`
 }
 
 type lsblk struct {
@@ -43,8 +43,26 @@ type lsblk struct {
 
 func main() {
 	var discoveryURL string
-	flag.StringVar(&discoveryURL, "discovery-url", "http://127.0.0.1:8081", "The URL to the discovery server")
+	flag.StringVar(&discoveryURL, "discovery-url", "", "The URL to the discovery server")
 	flag.Parse()
+
+	if len(discoveryURL) == 0 {
+		cmdLineFile, err := os.Open("/proc/cmdline")
+		if err != nil {
+			log.Fatalf("Error openning /proc/cmdline %s", err)
+		}
+		cmdLineBytes, err := ioutil.ReadAll(cmdLineFile)
+		if err != nil {
+			log.Fatalf("Error reading /proc/cmdline %s", err)
+		}
+
+		cmdLineString := string(cmdLineBytes)
+		cmdLineArgs := strings.Split(cmdLineString, " ")
+		discoveryArg := cmdLineArgs[len(cmdLineArgs)-1]
+		discoveryURL = strings.TrimSpace(strings.Split(discoveryArg, "=")[1])
+
+		log.Printf("Using discovery URL %s", discoveryURL)
+	}
 
 	log.Printf("Starting Bare Metal Agent")
 
@@ -69,10 +87,10 @@ func main() {
 
 	storage := make([]baremetalv1alpha1.BareMetalDiscoveryHardwareStorage, 0)
 
-	lsblkCmd := exec.Command("lsblk", "--json", "-d", "-b", "-e7,11", "-o", "name,size,rota,serial,disc-max")
+	lsblkCmd := exec.Command("lsblk", "--json", "-d", "-b", "-e1,7,11", "-o", "name,size,rota,serial,disc-max")
 	output, err := lsblkCmd.CombinedOutput()
 	if err != nil {
-		log.Fatalf("Error gathering storage info: %v", string(output))
+		log.Fatalf("Error gathering storage info: %s: %v", err, string(output))
 	}
 
 	lsblk := &lsblk{}
@@ -84,17 +102,13 @@ func main() {
 	for _, blockDevice := range lsblk.BlockDevices {
 		s := baremetalv1alpha1.BareMetalDiscoveryHardwareStorage{
 			Name:       blockDevice.Name,
-			Size:       resource.MustParse(blockDevice.Size),
-			Serial:     blockDevice.Serial,
-			Rotational: false,
+			Size:       resource.MustParse(strconv.FormatInt(blockDevice.Size, 10)),
+			Serial:     strings.TrimSpace(blockDevice.Serial),
+			Rotational: blockDevice.Rota,
 			Trim:       false,
 		}
 
-		if blockDevice.Rota != "0" {
-			s.Rotational = true
-		}
-
-		if blockDevice.DiscMax != "0" {
+		if blockDevice.DiscMax > 0 {
 			s.Trim = true
 		}
 
@@ -108,7 +122,7 @@ func main() {
 	}
 
 	for _, interf := range interfaceStat {
-		if interf.Name != "lo" {
+		if interf.Name != "lo" && interf.Name != "tunl0" && interf.Name != "ip6tnl0" {
 			i := baremetalv1alpha1.BareMetalDiscoveryHardwareNIC{
 				Name: interf.Name,
 				MAC:  interf.HardwareAddr,

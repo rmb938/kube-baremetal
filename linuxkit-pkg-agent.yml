@@ -1,0 +1,15 @@
+org: docker.pkg.github.com/rmb938/kube-baremetal
+image: agent
+network: true
+arches:
+  - amd64
+config:
+  command:
+    - /agent
+  binds:
+    - /dev:/dev
+  rootfsPropagation: shared
+  pid: host
+  net: host
+  capabilities:
+    - all
