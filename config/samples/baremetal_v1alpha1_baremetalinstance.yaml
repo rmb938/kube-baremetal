@@ -1,0 +1,7 @@
+apiVersion: baremetal.com.rmb938/v1alpha1
+kind: BareMetalInstance
+metadata:
+  name: baremetalinstance-sample
+spec:
+  # Add fields here
+  foo: bar

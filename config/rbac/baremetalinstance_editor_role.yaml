@@ -1,0 +1,26 @@
+# permissions to do edit baremetalinstances.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: baremetalinstance-editor-role
+rules:
+- apiGroups:
+  - baremetal.com.rmb938
+  resources:
+  - baremetalinstances
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - baremetal.com.rmb938
+  resources:
+  - baremetalinstances/status
+  verbs:
+  - get
+  - patch
+  - update

@@ -7,4 +7,7 @@ resources:
 - group: baremetal
   kind: BareMetalHardware
   version: v1alpha1
+- group: baremetal
+  kind: BareMetalInstance
+  version: v1alpha1
 version: "2"

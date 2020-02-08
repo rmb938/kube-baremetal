@@ -16,6 +16,7 @@ limitations under the License.
 package webhooks
 
 import (
+	"context"
 	"reflect"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -76,12 +77,39 @@ var _ webhook.Validator = &BareMetalHardwareWebhook{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (w *BareMetalHardwareWebhook) ValidateCreate(obj runtime.Object) error {
+	ctx := context.Background()
 	r := obj.(*baremetalv1alpha1.BareMetalHardware)
 
 	baremetalhardwarelog.Info("validate create", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object creation.
-	return nil
+	var allErrs field.ErrorList
+
+	// Block creation if existing BMH
+	existingBMH := &baremetalv1alpha1.BareMetalHardwareList{}
+	err := w.client.List(ctx, existingBMH, client.MatchingFields{"spec.systemUUID": string(r.Spec.SystemUUID)})
+	if err != nil {
+		allErrs = append(allErrs, field.InternalError(
+			field.NewPath("spec").Child("systemUUID"),
+			err,
+		))
+	}
+
+	if len(existingBMH.Items) > 0 {
+		allErrs = append(allErrs, field.Duplicate(
+			field.NewPath("spec").Child("systemUUID"),
+			string(r.Spec.SystemUUID),
+		))
+	}
+
+	// TODO: block creation if existing CBMH
+
+	if len(allErrs) == 0 {
+		return nil
+	}
+
+	return apierrors.NewInvalid(
+		schema.GroupKind{Group: baremetalv1alpha1.GroupVersion.Group, Kind: baremetalv1alpha1.BareMetalDiscoveryKind},
+		r.Name, allErrs)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type

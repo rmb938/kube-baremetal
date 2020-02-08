@@ -435,6 +435,7 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 			bmd = &discoveryList.Items[0]
 			break
 		default:
+			// we found multiple discoveries something messed up
 			r.Recorder.Eventf(bmh, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalHardwareManyDiscoveryFoundEventReason, "Found multiple discovery resources for the systemUUID of %s", bmh.Spec.SystemUUID)
 			return ctrl.Result{Requeue: true}, nil
 		}
@@ -456,10 +457,9 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 }
 
 func (r *BareMetalHardwareReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// This controller needs this indexer
-	if err := mgr.GetFieldIndexer().IndexField(&baremetalv1alpha1.BareMetalDiscovery{}, "spec.systemUUID", func(rawObj runtime.Object) []string {
-		bmd := rawObj.(*baremetalv1alpha1.BareMetalDiscovery)
-		return []string{string(bmd.Spec.SystemUUID)}
+	if err := mgr.GetFieldIndexer().IndexField(&baremetalv1alpha1.BareMetalHardware{}, "spec.systemUUID", func(rawObj runtime.Object) []string {
+		bmh := rawObj.(*baremetalv1alpha1.BareMetalHardware)
+		return []string{string(bmh.Spec.SystemUUID)}
 	}); err != nil {
 		return err
 	}

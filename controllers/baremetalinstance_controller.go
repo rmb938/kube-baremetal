@@ -26,35 +26,27 @@ import (
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
 )
 
-// BareMetalDiscoveryReconciler reconciles a BareMetalDiscovery object
-type BareMetalDiscoveryReconciler struct {
+// BareMetalInstanceReconciler reconciles a BareMetalInstance object
+type BareMetalInstanceReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=baremetal.com.rmb938,resources=baremetaldiscoveries,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=baremetal.com.rmb938,resources=baremetaldiscoveries/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=baremetal.com.rmb938,resources=baremetalinstances,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=baremetal.com.rmb938,resources=baremetalinstances/status,verbs=get;update;patch
 
-func (r *BareMetalDiscoveryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *BareMetalInstanceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
-	_ = r.Log.WithValues("baremetaldiscovery", req.NamespacedName)
+	_ = r.Log.WithValues("baremetalinstance", req.NamespacedName)
 
 	// your logic here
-	// TODO: do we need a controller for discovery? Probably not
 
 	return ctrl.Result{}, nil
 }
 
-func (r *BareMetalDiscoveryReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(&baremetalv1alpha1.BareMetalDiscovery{}, "spec.systemUUID", func(rawObj runtime.Object) []string {
-		bmd := rawObj.(*baremetalv1alpha1.BareMetalDiscovery)
-		return []string{string(bmd.Spec.SystemUUID)}
-	}); err != nil {
-		return err
-	}
-
+func (r *BareMetalInstanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&baremetalv1alpha1.BareMetalDiscovery{}).
+		For(&baremetalv1alpha1.BareMetalInstance{}).
 		Complete(r)
 }

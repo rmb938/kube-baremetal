@@ -87,6 +87,15 @@ func main() {
 		os.Exit(1)
 	}
 	(&webhooks.BareMetalHardwareWebhook{}).SetupWebhookWithManager(mgr)
+	if err = (&controllers.BareMetalInstanceReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("BareMetalInstance"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "BareMetalInstance")
+		os.Exit(1)
+	}
+	(&webhooks.BareMetalInstanceWebhook{}).SetupWebhookWithManager(mgr)
 	// +kubebuilder:scaffold:builder
 
 	signalHandler := ctrl.SetupSignalHandler()
