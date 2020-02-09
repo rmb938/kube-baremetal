@@ -123,7 +123,10 @@ type BareMetalDiscovery struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   BareMetalDiscoverySpec   `json:"spec,omitempty"`
+	// +kubebuilder:validation:Required
+	Spec BareMetalDiscoverySpec `json:"spec"`
+
+	// +kubebuilder:validation:Optional
 	Status BareMetalDiscoveryStatus `json:"status,omitempty"`
 }
 

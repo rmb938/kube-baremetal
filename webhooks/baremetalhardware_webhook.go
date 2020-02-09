@@ -137,12 +137,6 @@ func (w *BareMetalHardwareWebhook) ValidateUpdate(obj runtime.Object, old runtim
 		))
 	}
 
-	// TODO: prevent changing things when instanceRef is not null (only allow changing CanProvision)
-
-	// TODO: prevent changing things when CanProvision is true (only allow changing CanProvision)
-
-	// TODO: don't allow removing instanceRef when the instance still exists
-
 	if len(allErrs) == 0 {
 		return nil
 	}

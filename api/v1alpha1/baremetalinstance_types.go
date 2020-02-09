@@ -16,7 +16,14 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	conditionv1 "github.com/rmb938/kube-baremetal/apis/condition/v1"
+)
+
+var (
+	BareMetalInstanceFinalizer = "bmi." + FinalizerPrefix
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -27,26 +34,60 @@ type BareMetalInstanceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of BareMetalInstance. Edit BareMetalInstance_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// +kubebuilder:validation:Optional
+	Selector map[string]string `json:"hardwareSelector,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	HardwareName string `json:"hardwareName,omitempty"`
+}
+
+// +kubebuilder:validation:Enum=Pending;Imaging;Running;Cleaning
+type BareMetalInstanceStatusPhase string
+
+const (
+	BareMetalInstanceStatusPhasePending  BareMetalInstanceStatusPhase = "Pending"
+	BareMetalInstanceStatusPhaseImaging  BareMetalInstanceStatusPhase = "Imaging"
+	BareMetalInstanceStatusPhaseRunning  BareMetalInstanceStatusPhase = "Running"
+	BareMetalInstanceStatusPhaseCleaning BareMetalInstanceStatusPhase = "Cleaning"
+)
+
+type BareMetalInstanceStatusAgentInfo struct {
+	// +kubebuilder:validation:Required
+	IP string `json:"ip"`
+
+	// TODO: do we want to put anything else here?
 }
 
 // BareMetalInstanceStatus defines the observed state of BareMetalInstance
 type BareMetalInstanceStatus struct {
+	conditionv1.StatusConditions `json:",inline"`
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// +kubebuilder:validation:Optional
+	AgentInfo *BareMetalInstanceStatusAgentInfo `json:"agentInfo,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	Phase BareMetalInstanceStatusPhase `json:"phase,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:shortName=bmi
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.phase`
 
 // BareMetalInstance is the Schema for the baremetalinstances API
 type BareMetalInstance struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   BareMetalInstanceSpec   `json:"spec,omitempty"`
+	// +kubebuilder:validation:Required
+	Spec BareMetalInstanceSpec `json:"spec"`
+
+	// +kubebuilder:validation:Optional
 	Status BareMetalInstanceStatus `json:"status,omitempty"`
 }
 
@@ -58,6 +99,21 @@ type BareMetalInstanceList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []BareMetalInstance `json:"items"`
 }
+
+const (
+	// Condition Types
+	BareMetalHardwareConditionTypeInstanceScheduled conditionv1.ConditionType = "InstanceScheduled"
+
+	// Condition Reasons
+
+	// Event Reasons
+	BareMetalInstanceHardwareNotFoundEventReason    string = "HardwareNotFound"
+	BareMetalInstanceHardwareDeletingEventReason    string = "HardwareDeleting"
+	BareMetalInstanceHardwareHasInstanceEventReason string = "HardwareHasInstance"
+
+	BareMetalInstanceScheduleEventReason   string = "InstanceScheduled"
+	BareMetalInstanceUnscheduleEventReason string = "InstanceUnscheduled"
+)
 
 func init() {
 	SchemeBuilder.Register(&BareMetalInstance{}, &BareMetalInstanceList{})

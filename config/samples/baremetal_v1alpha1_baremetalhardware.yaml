@@ -3,10 +3,7 @@ kind: BareMetalHardware
 metadata:
   name: baremetalhardware-sample
 spec:
-  systemUUID: 092e19f3-f30b-48aa-b6b6-ddd2864414c3
+  systemUUID: 00000000-0000-0000-0000-f3ee00f0f3ee
   imageDrive: nvme0n1
   nics:
-    - name: bond0
-      bond:
-        interfaces:
-          - enp8s0
+    - name: eth0

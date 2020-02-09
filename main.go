@@ -17,7 +17,9 @@ package main
 
 import (
 	"flag"
+	"math/rand"
 	"os"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -56,6 +58,8 @@ func main() {
 		o.Development = true
 	}))
 
+	rand.Seed(time.Now().Unix())
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
@@ -88,9 +92,11 @@ func main() {
 	}
 	(&webhooks.BareMetalHardwareWebhook{}).SetupWebhookWithManager(mgr)
 	if err = (&controllers.BareMetalInstanceReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("BareMetalInstance"),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("BareMetalInstance"),
+		Scheme:   mgr.GetScheme(),
+		Clock:    clock.RealClock{},
+		Recorder: mgr.GetEventRecorderFor("BareMetalInstance"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "BareMetalInstance")
 		os.Exit(1)

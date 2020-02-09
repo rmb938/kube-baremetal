@@ -64,10 +64,7 @@ type BareMetalHardwareNIC struct {
 
 	// Bond information for the nic
 	// +kubebuilder:validation:Optional
-	// +nullable
 	Bond *BareMetalHardwareNICBond `json:"bond,omitempty"`
-
-	// TODO: the network reference the nic is plugged into
 }
 
 // BareMetalHardwareSpec defines the desired state of BareMetalHardware
@@ -104,8 +101,6 @@ type BareMetalHardwareStatus struct {
 	// The hardware that the discovered system contains
 	// +kubebuilder:validation:Optional
 	Hardware *BareMetalDiscoveryHardware `json:"hardware,omitempty"`
-
-	// TODO: instanceRef
 }
 
 // +kubebuilder:object:root=true
@@ -120,7 +115,10 @@ type BareMetalHardware struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   BareMetalHardwareSpec   `json:"spec,omitempty"`
+	// +kubebuilder:validation:Required
+	Spec BareMetalHardwareSpec `json:"spec"`
+
+	// +kubebuilder:validation:Optional
 	Status BareMetalHardwareStatus `json:"status,omitempty"`
 }
 

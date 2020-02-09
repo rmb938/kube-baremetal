@@ -8,6 +8,10 @@ metadata:
   creationTimestamp: null
   name: baremetalinstances.baremetal.com.rmb938
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.phase
+    name: STATUS
+    type: string
   group: baremetal.com.rmb938
   names:
     kind: BareMetalInstance
@@ -38,14 +42,104 @@ spec:
         spec:
           description: BareMetalInstanceSpec defines the desired state of BareMetalInstance
           properties:
-            foo:
-              description: Foo is an example field of BareMetalInstance. Edit BareMetalInstance_types.go
-                to remove/update
+            hardwareName:
               type: string
+            hardwareSelector:
+              additionalProperties:
+                type: string
+              type: object
+            tolerations:
+              items:
+                description: The pod this Toleration is attached to tolerates any
+                  taint that matches the triple <key,value,effect> using the matching
+                  operator <operator>.
+                properties:
+                  effect:
+                    description: Effect indicates the taint effect to match. Empty
+                      means match all taint effects. When specified, allowed values
+                      are NoSchedule, PreferNoSchedule and NoExecute.
+                    type: string
+                  key:
+                    description: Key is the taint key that the toleration applies
+                      to. Empty means match all taint keys. If the key is empty, operator
+                      must be Exists; this combination means to match all values and
+                      all keys.
+                    type: string
+                  operator:
+                    description: Operator represents a key's relationship to the value.
+                      Valid operators are Exists and Equal. Defaults to Equal. Exists
+                      is equivalent to wildcard for value, so that a pod can tolerate
+                      all taints of a particular category.
+                    type: string
+                  tolerationSeconds:
+                    description: TolerationSeconds represents the period of time the
+                      toleration (which must be of effect NoExecute, otherwise this
+                      field is ignored) tolerates the taint. By default, it is not
+                      set, which means tolerate the taint forever (do not evict).
+                      Zero and negative values will be treated as 0 (evict immediately)
+                      by the system.
+                    format: int64
+                    type: integer
+                  value:
+                    description: Value is the taint value the toleration matches to.
+                      If the operator is Exists, the value should be empty, otherwise
+                      just a regular string.
+                    type: string
+                type: object
+              type: array
           type: object
         status:
           description: BareMetalInstanceStatus defines the observed state of BareMetalInstance
+          properties:
+            agentInfo:
+              properties:
+                ip:
+                  type: string
+              required:
+              - ip
+              type: object
+            conditions:
+              description: Conditions for the object
+              items:
+                properties:
+                  lastTransitionTime:
+                    description: LastTransitionTime is the timestamp corresponding
+                      to the last status change of this condition.
+                    format: date-time
+                    type: string
+                  message:
+                    description: Message is a human readable description of the details
+                      of the last transition, complementing reason.
+                    type: string
+                  reason:
+                    description: Reason is a brief machine readable explanation for
+                      the condition's last transition.
+                    type: string
+                  status:
+                    description: Status of the condition
+                    enum:
+                    - "True"
+                    - "False"
+                    - Unknown
+                    type: string
+                  type:
+                    description: Type of the condition
+                    type: string
+                required:
+                - status
+                - type
+                type: object
+              type: array
+            phase:
+              enum:
+              - Pending
+              - Imaging
+              - Running
+              - Cleaning
+              type: string
           type: object
+      required:
+      - spec
       type: object
   version: v1alpha1
   versions:

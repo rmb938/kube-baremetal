@@ -17,6 +17,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -85,12 +86,31 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 			return ctrl.Result{}, nil
 		}
 
-		// TODO: do actual deletion stuffs
-		//  if instanceRef is not nil prevent deletion and event saying there's an instance still
+		bmiList := &baremetalv1alpha1.BareMetalInstanceList{}
+		err := r.List(ctx, bmiList, client.MatchingFields{"spec.hardwareName": bmh.Name})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 
-		// Done deleting so remove finalizer
+		if len(bmiList.Items) > 0 {
+			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, "FailedDelete", "Cannot delete hardware while an instance is scheduled.")
+
+			for _, bmi := range bmiList.Items {
+				if bmi.DeletionTimestamp.IsZero() == false {
+					continue
+				}
+				err = r.Delete(ctx, &bmi)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+
+			return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+		}
+
+		// Done deleting so remove bmh finalizer
 		baremetalapi.RemoveFinalizer(bmh, baremetalv1alpha1.BareMetalHardwareFinalizer)
-		err := r.Update(ctx, bmh)
+		err = r.Update(ctx, bmh)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -115,7 +135,7 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 				return ctrl.Result{}, err
 			}
 
-			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareNotSchedulableEventReason, "Hardware %s status is now HardwareSchedulable", bmh.Name)
+			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareSchedulableEventReason, "Hardware %s status is now HardwareSchedulable", bmh.Name)
 			return ctrl.Result{}, nil
 		}
 	} else {
@@ -140,7 +160,7 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 				return ctrl.Result{}, err
 			}
 
-			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareSchedulableEventReason, "Hardware %s status is now HardwareNotSchedulable", bmh.Name)
+			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareNotSchedulableEventReason, "Hardware %s status is now HardwareNotSchedulable", bmh.Name)
 			return ctrl.Result{}, nil
 		}
 	}

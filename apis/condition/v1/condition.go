@@ -41,8 +41,7 @@ func (scs *StatusConditions) SetConditions(conditions []StatusCondition) {
 }
 
 func (scs *StatusConditions) SetCondition(newCondition *StatusCondition) error {
-	if len(newCondition.Type) == 0 || len(newCondition.Status) == 0 || len(newCondition.Reason) == 0 ||
-		len(newCondition.Message) == 0 || newCondition.LastTransitionTime.IsZero() {
+	if len(newCondition.Type) == 0 || len(newCondition.Status) == 0 || newCondition.LastTransitionTime.IsZero() {
 		return fmt.Errorf("condition is not fully formed")
 	}
 

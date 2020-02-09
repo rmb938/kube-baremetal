@@ -60,7 +60,6 @@ spec:
                 properties:
                   bond:
                     description: Bond information for the nic
-                    nullable: true
                     properties:
                       interfaces:
                         description: The nic names to bond together
@@ -239,6 +238,8 @@ spec:
               - storage
               type: object
           type: object
+      required:
+      - spec
       type: object
   version: v1alpha1
   versions:
