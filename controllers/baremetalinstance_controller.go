@@ -100,7 +100,16 @@ func (r *BareMetalInstanceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 			}
 
 			if bmi.Status.Phase == baremetalv1alpha1.BareMetalInstanceStatusPhaseCleaning {
-				// TODO: check if done cleaning
+				if bmi.Status.AgentInfo == nil {
+					r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentNotReady", "The agent is not yet ready, cannot clean the instance. Is the server booted into the agent?")
+					return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+				}
+
+				// TODO: check agent status
+				//  if not cleaning send clean request
+				//   then requeue after 1 minute
+				//  if not done requeue after 1 minute
+				//  once done continue with bellow (keeping the server running is ok)
 
 				// remove owner ref when done cleaning
 				ownerRefs := make([]metav1.OwnerReference, 0)
@@ -141,6 +150,8 @@ func (r *BareMetalInstanceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 					return ctrl.Result{}, nil
 				}
 
+				// TODO: send bmc reboot/poweron request so we boot into the agent
+
 				bmi.Status.Phase = baremetalv1alpha1.BareMetalInstanceStatusPhaseCleaning
 				err = r.Status().Update(ctx, bmi)
 				if err != nil {
@@ -177,6 +188,8 @@ func (r *BareMetalInstanceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 		}
 
 		if scheduledCond.Status == v1.ConditionStatusTrue {
+			// TODO: send bmc reboot/poweron request so we boot into the agent
+
 			bmi.Status.Phase = baremetalv1alpha1.BareMetalInstanceStatusPhaseImaging
 			err := r.Status().Update(ctx, bmi)
 			if err != nil {
@@ -185,6 +198,19 @@ func (r *BareMetalInstanceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 		}
 		return ctrl.Result{}, nil
 	case baremetalv1alpha1.BareMetalInstanceStatusPhaseImaging:
+		if bmi.Status.AgentInfo == nil {
+			r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentNotReady", "The agent is not yet ready, cannot image the instance. Is the server booted into the agent?")
+			return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+		}
+
+		// TODO: check agent status
+		//  if not imaging send imaging request
+		//   then requeue after 1 minute
+		//  if not done requeue after 1 minute
+		//  once done change status to running and set agentInfo to nil
+		//
+		// TODO: bmc reboot and/or some way to tell the user to reboot the server before switching to running
+
 		break
 	case baremetalv1alpha1.BareMetalInstanceStatusPhaseRunning:
 		break

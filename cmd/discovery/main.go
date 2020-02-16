@@ -8,6 +8,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
 	"github.com/rmb938/kube-baremetal/pkg/discovery"
@@ -41,7 +42,7 @@ func main() {
 		Port:               9443,
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		setupLog.Error(err, "unable to create manager")
 		os.Exit(1)
 	}
 
@@ -57,14 +58,18 @@ func main() {
 	server := discovery.NewServer(":8081", mgr.GetClient())
 
 	setupLog.Info("starting manager")
-	go func() {
-		if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-			setupLog.Error(err, "problem running manager")
-			os.Exit(1)
-		}
-	}()
 
-	setupLog.Info("starting discovery server")
-	server.Run()
+	err = mgr.Add(manager.RunnableFunc(func(stop <-chan struct{}) error {
+		return server.Run(stop)
+	}))
+	if err != nil {
+		setupLog.Error(err, "unable to add http server to manager")
+		os.Exit(1)
+	}
+
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
 
 }

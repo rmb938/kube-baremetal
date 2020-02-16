@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/gin-contrib/location"
 	"github.com/gin-gonic/gin"
@@ -34,7 +35,7 @@ func NewServer(address string, client client.Client) *server {
 	}
 }
 
-func (s *server) Run() {
+func (s *server) Run(stop <-chan struct{}) error {
 	r := gin.Default()
 
 	r.Use(location.Default())
@@ -43,17 +44,38 @@ func (s *server) Run() {
 
 	r.GET("/ipxe/boot", s.ipxeBoot)
 
-	r.PUT("/ready", s.ready)
+	r.POST("/ready", s.ready)
 	r.POST("/discover", s.discover)
 
-	_ = r.Run(s.Address)
+	srv := &http.Server{
+		Addr:    s.Address,
+		Handler: r,
+	}
+
+	go func() {
+		s.logger.Info("Starting discovery http server")
+
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			s.logger.Error(err, "Error when listening and serving discovery server")
+		}
+	}()
+
+	<-stop
+	s.logger.Info("Stopping discovery http server")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *server) ipxeBoot(c *gin.Context) {
 	systemUUID := c.DefaultQuery("systemUUID", "")
 
 	if len(systemUUID) == 0 {
-
 		c.String(http.StatusOK, "#!ipxe\necho Chaining again with systemUUID\nchain %s", "boot?systemUUID=${uuid}")
 		return
 	}
@@ -74,15 +96,127 @@ func (s *server) ipxeBoot(c *gin.Context) {
 	cmdLine := string(cmdLineBytes)
 
 	u := location.Get(c)
-
-	// TODO: add URL to cmdLine
 	cmdLine += " discovery_url=" + u.String()
 
 	c.String(http.StatusOK, "#!ipxe\necho Booting into imaging OS\ninitrd files/linuxkit-agent-initrd.img\nchain files/linuxkit-agent-kernel %s", cmdLine)
 }
 
+type readyInput struct {
+	SystemUUID types.UID `json:"systemUUID"`
+	IP         string    `json:"ip"`
+}
+
 func (s *server) ready(c *gin.Context) {
-	c.String(http.StatusOK, "hello ready")
+	input := &readyInput{}
+
+	if err := c.ShouldBindJSON(input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+
+	var bmh *baremetalv1alpha1.BareMetalHardware
+
+	hardwareList := &baremetalv1alpha1.BareMetalHardwareList{}
+	err := s.Client.List(context.Background(), hardwareList, client.MatchingFields{"spec.systemUUID": string(input.SystemUUID)})
+	if err != nil {
+		if apiError, ok := err.(apierrors.APIStatus); ok {
+			if apiError.Status().Code == 0 {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(int(apiError.Status().Code), apiError.Status())
+			}
+			c.Abort()
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+
+	switch len(hardwareList.Items) {
+	case 0:
+		// no hardware found so error 404
+		c.Status(http.StatusNotFound)
+		return
+	case 1:
+		// one hardware found so we are done
+		bmh = &hardwareList.Items[0]
+		break
+	default:
+		// multiple hardware found so error
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "hardware exists but multiple times, someone messed up."})
+		c.Abort()
+		return
+	}
+
+	bmi := &baremetalv1alpha1.BareMetalInstance{}
+
+	var existingRef *metav1.OwnerReference
+	for _, ref := range bmh.OwnerReferences {
+		if ref.APIVersion == bmi.APIVersion && ref.Kind == bmi.Kind {
+			existingRef = &ref
+			break
+		}
+	}
+
+	if existingRef == nil {
+		// No instance found
+		c.Status(http.StatusNotFound)
+		c.Abort()
+		return
+	}
+
+	if err = s.Client.Get(context.Background(), types.NamespacedName{Namespace: bmh.Namespace, Name: existingRef.Name}, bmi); err != nil {
+		if apierrors.IsNotFound(err) {
+			c.Status(http.StatusNotFound)
+			c.Abort()
+			return
+		}
+
+		if apiError, ok := err.(apierrors.APIStatus); ok {
+			if apiError.Status().Code == 0 {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(int(apiError.Status().Code), apiError.Status())
+			}
+			c.Abort()
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+
+	if bmi.Status.Phase != baremetalv1alpha1.BareMetalInstanceStatusPhaseImaging && bmi.Status.Phase != baremetalv1alpha1.BareMetalInstanceStatusPhaseCleaning {
+		c.Status(http.StatusNotFound)
+		c.Abort()
+		return
+	}
+
+	bmi.Status.AgentInfo = &baremetalv1alpha1.BareMetalInstanceStatusAgentInfo{
+		IP: input.IP,
+	}
+	err = s.Client.Status().Update(context.Background(), bmi)
+	if err != nil {
+		if apiError, ok := err.(apierrors.APIStatus); ok {
+			if apiError.Status().Code == 0 {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(int(apiError.Status().Code), apiError.Status())
+			}
+			c.Abort()
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+	c.Abort()
+	return
+
 }
 
 type discoveryInput struct {

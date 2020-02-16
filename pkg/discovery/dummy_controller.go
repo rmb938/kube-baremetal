@@ -20,6 +20,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
 )
@@ -52,5 +54,7 @@ func (r *DummyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&baremetalv1alpha1.BareMetalDiscovery{}).
+		Watches(&source.Kind{Type: &baremetalv1alpha1.BareMetalHardware{}}, handler.Funcs{}).
+		Watches(&source.Kind{Type: &baremetalv1alpha1.BareMetalInstance{}}, handler.Funcs{}).
 		Complete(r)
 }
