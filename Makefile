@@ -74,6 +74,10 @@ tilt:
 tilt-down:
 	KUBECONFIG=kind-kubeconfig tilt down
 
+linuxkit:
+	linuxkit pkg build -build-yml linuxkit-pkg-agent.yml -hash dev .
+	linuxkit build -dir discovery_files/ linuxkit-agent.yaml
+
 # find or download controller-gen
 # download controller-gen if necessary
 controller-gen:

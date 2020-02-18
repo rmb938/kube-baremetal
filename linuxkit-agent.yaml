@@ -34,7 +34,7 @@ services:
     env:
       - INSECURE=true
   - name: agent
-    image: rbelgrave/agent:dev
+    image: docker.pkg.github.com/rmb938/kube-baremetal/agent:dev
 trust:
   org:
-  - linuxkit
+    - linuxkit
