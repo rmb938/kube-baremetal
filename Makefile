@@ -68,6 +68,11 @@ kind:
 kind-clean:
 	kind delete cluster --name kube-baremetal
 
+tilt:
+	KUBECONFIG=kind-kubeconfig tilt up --no-browser
+
+tilt-down:
+	KUBECONFIG=kind-kubeconfig tilt down
 
 # find or download controller-gen
 # download controller-gen if necessary
