@@ -21,11 +21,8 @@ COPY webhooks/ webhooks/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags '-extldflags "-static"' -o manager main.go
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags '-extldflags "-static"' -o discovery cmd/discovery/main.go
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags '-extldflags "-static"' -o agent cmd/agent/main.go
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM alpine:3.11 as alpine
 
 RUN mkdir -p /out/etc/apk && cp -r /etc/apk/* /out/etc/apk/
@@ -41,7 +38,6 @@ WORKDIR /
 COPY --from=alpine /out /
 
 COPY --from=builder /workspace/manager .
-COPY --from=builder /workspace/discovery .
 COPY --from=builder /workspace/agent .
 USER 1000:1000
 

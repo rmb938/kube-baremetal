@@ -36,7 +36,59 @@ func NewServer(address string, client client.Client) *server {
 }
 
 func (s *server) Run(stop <-chan struct{}) error {
-	r := gin.Default()
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Recovery())
+
+	r.Use(func(c *gin.Context) {
+		// Start timer
+		start := time.Now()
+		path := c.Request.URL.Path
+		raw := c.Request.URL.RawQuery
+
+		// Process request
+		c.Next()
+
+		param := gin.LogFormatterParams{
+			Request: c.Request,
+			Keys:    c.Keys,
+		}
+
+		// Stop timer
+		param.TimeStamp = time.Now()
+		param.Latency = param.TimeStamp.Sub(start)
+
+		param.ClientIP = c.ClientIP()
+		param.Method = c.Request.Method
+		param.StatusCode = c.Writer.Status()
+		param.ErrorMessage = c.Errors.ByType(gin.ErrorTypePrivate).String()
+
+		param.BodySize = c.Writer.Size()
+
+		if raw != "" {
+			path = path + "?" + raw
+		}
+
+		param.Path = path
+
+		keyValues := []interface{}{
+			"status", c.Writer.Status(),
+			"latency", param.TimeStamp.Sub(start),
+			"client-ip", param.ClientIP,
+			"method", param.Method,
+			"path", param.Path,
+		}
+		
+		if len(param.ErrorMessage) > 0 {
+			keyValues = append(keyValues, "error", param.ErrorMessage)
+		}
+
+		if param.BodySize != -1 {
+			keyValues = append(keyValues, "size", param.BodySize)
+		}
+
+		s.logger.Info("discovery request", keyValues...)
+	})
 
 	r.Use(location.Default())
 

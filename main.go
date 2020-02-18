@@ -27,9 +27,11 @@ import (
 	"k8s.io/utils/clock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
 	"github.com/rmb938/kube-baremetal/controllers"
+	"github.com/rmb938/kube-baremetal/pkg/discovery"
 	"github.com/rmb938/kube-baremetal/webhooks"
 	// +kubebuilder:scaffold:imports
 )
@@ -105,6 +107,15 @@ func main() {
 	// +kubebuilder:scaffold:builder
 
 	signalHandler := ctrl.SetupSignalHandler()
+
+	server := discovery.NewServer(":8081", mgr.GetClient())
+	err = mgr.Add(manager.RunnableFunc(func(stop <-chan struct{}) error {
+		return server.Run(stop)
+	}))
+	if err != nil {
+		setupLog.Error(err, "unable to add http server to manager")
+		os.Exit(1)
+	}
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(signalHandler); err != nil {
