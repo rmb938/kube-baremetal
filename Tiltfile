@@ -30,6 +30,7 @@ WORKDIR /
 COPY --from=tilt-helper /start.sh .
 COPY --from=tilt-helper /restart.sh .
 COPY .tiltbuild/manager .
+COPY discovery_files /discovery_files
 """
 
     # Set up a local_resource build of the provider's manager binary. The provider is expected to have a main.go in
@@ -62,7 +63,7 @@ COPY .tiltbuild/manager .
         dockerfile_contents=dockerfile_contents_manager,
         target="tilt",
         entrypoint="sh /start.sh /manager",
-        only=".tiltbuild/manager",
+        only=[".tiltbuild/manager", "discovery_files"],
         live_update=[
             sync("discovery_files", "/discovery_files"),
             sync(".tiltbuild/manager", "/manager"),
