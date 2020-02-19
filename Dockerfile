@@ -39,6 +39,7 @@ COPY --from=alpine /out /
 
 COPY --from=builder /workspace/manager .
 COPY --from=builder /workspace/agent .
+COPY discovery_files /discovery_files
 USER 1000:1000
 
 ENTRYPOINT []

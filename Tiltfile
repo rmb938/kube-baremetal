@@ -15,7 +15,7 @@ settings.update(read_json(
 
 tilt_helper_dockerfile_header = """
 # Tilt image
-FROM golang:1.13 as tilt-helper
+FROM alpine:3.11 as tilt-helper
 # Support live reloading with Tilt
 RUN wget --output-document /restart.sh --quiet https://raw.githubusercontent.com/windmilleng/rerun-process-wrapper/master/restart.sh  && \
     wget --output-document /start.sh --quiet https://raw.githubusercontent.com/windmilleng/rerun-process-wrapper/master/start.sh && \
@@ -25,7 +25,7 @@ RUN wget --output-document /restart.sh --quiet https://raw.githubusercontent.com
 
 def deploy_baremetal_manager():
     tilt_dockerfile_header_manager = """
-FROM gcr.io/distroless/base:debug as tilt
+FROM alpine:3.11 as tilt
 WORKDIR /
 COPY --from=tilt-helper /start.sh .
 COPY --from=tilt-helper /restart.sh .
