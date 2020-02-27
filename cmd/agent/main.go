@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	net2 "net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -22,6 +23,7 @@ import (
 	"github.com/shirou/gopsutil/net"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -221,15 +223,27 @@ func main() {
 		Handler: router,
 	}
 
+	// TODO: send ready (uuid and ip)
+
+	httpListener, err := net2.Listen("tcp", srv.Addr)
+	if err != nil {
+		setupLog.Error(err, "Error listening on "+srv.Addr)
+		os.Exit(1)
+	}
+
+	go func() {
+		wait.Until(func() {
+			// TODO: heartbeat here (uuid)
+		}, 30*time.Second, signalChan)
+	}()
+
 	go func() {
 		setupLog.Info("Starting agent http server")
 
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			setupLog.Error(err, "Error when listening and serving agent server")
+		if err := srv.Serve(httpListener); err != nil && err != http.ErrServerClosed {
+			setupLog.Error(err, "Error when serving agent server")
 		}
 	}()
-
-	// TODO: ready go routine
 
 	<-signalChan
 	setupLog.Info("Stopping agent http server")

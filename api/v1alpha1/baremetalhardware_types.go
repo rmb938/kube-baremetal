@@ -62,9 +62,15 @@ type BareMetalHardwareNIC struct {
 	// +kubebuilder:validation:Required
 	Name string `json:"name"`
 
+	// If the nic is the primary nic
+	// +kubebuilder:validation:Required
+	Primary bool `json:"primary"`
+
 	// Bond information for the nic
 	// +kubebuilder:validation:Optional
 	Bond *BareMetalHardwareNICBond `json:"bond,omitempty"`
+
+	// TODO: network ref here
 }
 
 // BareMetalHardwareSpec defines the desired state of BareMetalHardware
@@ -92,11 +98,26 @@ type BareMetalHardwareSpec struct {
 	Taints []corev1.Taint `json:"taints,omitempty"`
 }
 
+type BareMetalHardwareStatusInstanceRef struct {
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+
+	// +kubebuilder:validation:Required
+	Namespace string `json:"namespace"`
+
+	// +kubebuilder:validation:Required
+	UID types.UID `json:"uid"`
+}
+
 // BareMetalHardwareStatus defines the observed state of BareMetalHardware
 type BareMetalHardwareStatus struct {
 	conditionv1.StatusConditions `json:",inline"`
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// The reference to the instance running on the hardware
+	// +kubebuilder:validation:Optional
+	InstanceRef *BareMetalHardwareStatusInstanceRef `json:"instanceRef,omitempty"`
 
 	// The hardware that the discovered system contains
 	// +kubebuilder:validation:Optional

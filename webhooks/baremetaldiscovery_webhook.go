@@ -17,6 +17,7 @@ package webhooks
 
 import (
 	"context"
+	"net"
 	"reflect"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -37,6 +38,47 @@ var baremetaldiscoverylog = logf.Log.WithName("baremetaldiscovery-resource")
 
 type BareMetalDiscoveryWebhook struct {
 	client client.Client
+}
+
+func validateHardware(hardware *baremetalv1alpha1.BareMetalDiscoveryHardware, startPath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+
+	if hardware.CPU.CPUS.IsZero() {
+		allErrs = append(allErrs, field.Invalid(startPath.Child("hardware").Child("cpu").Child("cpus"), hardware.CPU.CPUS.String(), "CPU quantity cannot be zero"))
+	}
+
+	if hardware.Ram.IsZero() {
+		allErrs = append(allErrs, field.Invalid(startPath.Child("hardware").Child("ram"), hardware.Ram.String(), "Memory quantity cannot be zero"))
+	}
+
+	var storageNames []string
+	for i, storage := range hardware.Storage {
+		for _, existingName := range storageNames {
+			if existingName == storage.Name {
+				allErrs = append(allErrs, field.Duplicate(startPath.Child("hardware").Child("storage").Index(i).Child("mac"), storage.Name))
+			}
+		}
+
+		storageNames = append(storageNames, storage.Name)
+	}
+
+	var nicNames []string
+	for i, nic := range hardware.NICS {
+		_, err := net.ParseMAC(nic.MAC)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(startPath.Child("hardware").Child("nics").Index(i).Child("mac"), nic.MAC, err.Error()))
+		}
+
+		for _, existingName := range nicNames {
+			if existingName == nic.Name {
+				allErrs = append(allErrs, field.Duplicate(startPath.Child("hardware").Child("nics").Index(i).Child("mac"), nic.Name))
+			}
+		}
+
+		nicNames = append(nicNames, nic.Name)
+	}
+
+	return allErrs
 }
 
 func (w *BareMetalDiscoveryWebhook) SetupWebhookWithManager(mgr ctrl.Manager) {
@@ -104,6 +146,9 @@ func (w *BareMetalDiscoveryWebhook) ValidateCreate(obj runtime.Object) error {
 	}
 
 	// TODO: block creation if existing CBMH
+
+	// Validate Hardware
+	allErrs = append(allErrs, validateHardware(r.Spec.Hardware, field.NewPath("spec"))...)
 
 	if len(allErrs) == 0 {
 		return nil

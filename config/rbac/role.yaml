@@ -77,3 +77,23 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - baremetal.rmb938.com
+  resources:
+  - baremetalendpoints
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - baremetal.rmb938.com
+  resources:
+  - baremetalendpoints/status
+  verbs:
+  - get
+  - patch
+  - update

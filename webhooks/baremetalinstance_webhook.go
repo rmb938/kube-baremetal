@@ -28,6 +28,7 @@ import (
 
 	baremetalapi "github.com/rmb938/kube-baremetal/api"
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
+	conditionv1 "github.com/rmb938/kube-baremetal/apis/condition/v1"
 	"github.com/rmb938/kube-baremetal/webhook"
 	"github.com/rmb938/kube-baremetal/webhook/admission"
 )
@@ -72,8 +73,22 @@ func (w *BareMetalInstanceWebhook) ValidateCreate(obj runtime.Object) error {
 
 	baremetalinstancelog.Info("validate create", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object creation.
-	return nil
+	var allErrs field.ErrorList
+
+	if len(r.Status.HardwareName) > 0 {
+		allErrs = append(allErrs, field.Forbidden(
+			field.NewPath("status").Child("hardwareName"),
+			"Cannot set hardware name during creation",
+		))
+	}
+
+	if len(allErrs) == 0 {
+		return nil
+	}
+
+	return apierrors.NewInvalid(
+		schema.GroupKind{Group: baremetalv1alpha1.GroupVersion.Group, Kind: baremetalv1alpha1.BareMetalDiscoveryKind},
+		r.Name, allErrs)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
@@ -84,6 +99,29 @@ func (w *BareMetalInstanceWebhook) ValidateUpdate(obj runtime.Object, old runtim
 	oldBMI := old.(*baremetalv1alpha1.BareMetalInstance)
 
 	var allErrs field.ErrorList
+
+	// never allow setting the phase to empty
+	if len(oldBMI.Status.Phase) > 0 && len(r.Status.Phase) == 0 {
+		allErrs = append(allErrs, field.Forbidden(
+			field.NewPath("status").Child("phase"),
+			"Cannot set phase to empty string",
+		))
+	}
+
+	// never allow removing conditions
+	var existingConditions []conditionv1.ConditionType
+	for _, cond := range oldBMI.Status.GetConditions() {
+		existingConditions = append(existingConditions, cond.Type)
+	}
+	for _, condType := range existingConditions {
+		cond := r.Status.GetCondition(condType)
+		if cond == nil {
+			allErrs = append(allErrs, field.Forbidden(
+				field.NewPath("status").Child("conditions"),
+				"Cannot remove conditions",
+			))
+		}
+	}
 
 	// never allow changing hardware selector
 	if reflect.DeepEqual(r.Spec.Selector, oldBMI.Spec.Selector) == false {
@@ -103,11 +141,11 @@ func (w *BareMetalInstanceWebhook) ValidateUpdate(obj runtime.Object, old runtim
 
 	// when not deleting
 	if r.DeletionTimestamp.IsZero() == true {
-		// Don't allow changing hardware name if set
-		if len(oldBMI.Spec.HardwareName) > 0 && r.Spec.HardwareName != oldBMI.Spec.HardwareName {
+		// Don't allow changing scheduled hardware name if set
+		if len(oldBMI.Status.HardwareName) > 0 && r.Status.HardwareName != oldBMI.Status.HardwareName {
 			allErrs = append(allErrs, field.Forbidden(
-				field.NewPath("spec").Child("hardwareName"),
-				"Cannot change the hardware name",
+				field.NewPath("status").Child("hardwareName"),
+				"Cannot change the scheduled hardware name",
 			))
 		}
 	}

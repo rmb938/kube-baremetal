@@ -21,8 +21,10 @@ import (
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/clock"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -86,23 +88,40 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 			return ctrl.Result{}, nil
 		}
 
-		bmiList := &baremetalv1alpha1.BareMetalInstanceList{}
-		err := r.List(ctx, bmiList, client.MatchingFields{"spec.hardwareName": bmh.Name})
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		if len(bmiList.Items) > 0 {
-			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, "FailedDelete", "Cannot delete hardware while an instance is scheduled.")
-
-			for _, bmi := range bmiList.Items {
-				if bmi.DeletionTimestamp.IsZero() == false {
-					continue
+		if bmh.Status.InstanceRef != nil {
+			bmi := &baremetalv1alpha1.BareMetalInstance{}
+			err := r.Get(ctx, types.NamespacedName{Namespace: bmh.Status.InstanceRef.Namespace, Name: bmh.Status.InstanceRef.Name}, bmi)
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					// bmi wasn't found so set instance ref to nil
+					bmh.Status.InstanceRef = nil
+					err := r.Status().Update(ctx, bmh)
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					return ctrl.Result{}, nil
+				} else {
+					return ctrl.Result{}, err
 				}
-				err = r.Delete(ctx, &bmi)
+			}
+
+			if bmi.UID != bmh.Status.InstanceRef.UID {
+				// bmi was found but doesn't match UID
+				// this means it's not our instance
+				// so lets remove the instance ref
+				bmh.Status.InstanceRef = nil
+				err := r.Status().Update(ctx, bmh)
 				if err != nil {
 					return ctrl.Result{}, err
 				}
+				return ctrl.Result{}, nil
+			}
+
+			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, "FailedDelete", "Cannot delete hardware while an instance is scheduled.")
+
+			err = r.Delete(ctx, bmi)
+			if err != nil {
+				return ctrl.Result{}, err
 			}
 
 			return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
@@ -110,7 +129,7 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 
 		// Done deleting so remove bmh finalizer
 		baremetalapi.RemoveFinalizer(bmh, baremetalv1alpha1.BareMetalHardwareFinalizer)
-		err = r.Update(ctx, bmh)
+		err := r.Update(ctx, bmh)
 		if err != nil {
 			return ctrl.Result{}, err
 		}

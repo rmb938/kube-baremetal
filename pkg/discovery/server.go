@@ -78,7 +78,7 @@ func (s *server) Run(stop <-chan struct{}) error {
 			"method", param.Method,
 			"path", param.Path,
 		}
-		
+
 		if len(param.ErrorMessage) > 0 {
 			keyValues = append(keyValues, "error", param.ErrorMessage)
 		}
@@ -97,6 +97,7 @@ func (s *server) Run(stop <-chan struct{}) error {
 	r.GET("/ipxe/boot", s.ipxeBoot)
 
 	r.POST("/ready", s.ready)
+	r.PUT("/heartbeat", s.heartbeat)
 	r.POST("/discover", s.discover)
 
 	srv := &http.Server{
@@ -150,7 +151,11 @@ func (s *server) ipxeBoot(c *gin.Context) {
 	u := location.Get(c)
 	cmdLine += " discovery_url=" + u.String()
 
-	c.String(http.StatusOK, "#!ipxe\necho Booting into imaging OS\ninitrd files/linuxkit-agent-initrd.img\nchain files/linuxkit-agent-kernel %s", cmdLine)
+	c.String(http.StatusOK, "#!ipxe\necho Booting into agent\ninitrd files/linuxkit-agent-initrd.img\nchain files/linuxkit-agent-kernel %s", cmdLine)
+}
+
+func (s *server) heartbeat(c *gin.Context) {
+
 }
 
 type readyInput struct {

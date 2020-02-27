@@ -29,6 +29,7 @@ import (
 
 	baremetalapi "github.com/rmb938/kube-baremetal/api"
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
+	conditionv1 "github.com/rmb938/kube-baremetal/apis/condition/v1"
 	"github.com/rmb938/kube-baremetal/webhook"
 	"github.com/rmb938/kube-baremetal/webhook/admission"
 )
@@ -75,6 +76,44 @@ func (w *BareMetalHardwareWebhook) Default(obj runtime.Object) {
 
 var _ webhook.Validator = &BareMetalHardwareWebhook{}
 
+func (w *BareMetalHardwareWebhook) validateNICs(bmh *baremetalv1alpha1.BareMetalHardware) field.ErrorList {
+	var allErrs field.ErrorList
+
+	if len(bmh.Spec.NICS) > 0 {
+		foundPrimary := false
+
+		var foundNICS []string
+		for i, nic := range bmh.Spec.NICS {
+
+			duplicateNIC := false
+			for _, foundNIC := range foundNICS {
+				if nic.Name == foundNIC {
+					duplicateNIC = true
+				}
+			}
+
+			if duplicateNIC == true {
+				allErrs = append(allErrs, field.Duplicate(field.NewPath("spec").Child("nics").Index(i), "cannot define nics multiple times"))
+			} else {
+				foundNICS = append(foundNICS, nic.Name)
+				if nic.Primary == true {
+					if foundPrimary == true {
+						allErrs = append(allErrs, field.Duplicate(field.NewPath("spec").Child("nics").Index(i), "cannot have multiple primary nics"))
+					}
+
+					foundPrimary = true
+				}
+			}
+		}
+
+		if foundPrimary == false {
+			allErrs = append(allErrs, field.Required(field.NewPath("spec").Child("nics"), "no primary nic found"))
+		}
+	}
+
+	return allErrs
+}
+
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (w *BareMetalHardwareWebhook) ValidateCreate(obj runtime.Object) error {
 	ctx := context.Background()
@@ -103,6 +142,13 @@ func (w *BareMetalHardwareWebhook) ValidateCreate(obj runtime.Object) error {
 
 	// TODO: block creation if existing CBMH
 
+	// Block creation when hardware is set
+	if r.Status.Hardware != nil {
+		allErrs = append(allErrs, field.Forbidden(field.NewPath("status").Child("hardware"), "Cannot have hardware set when creating"))
+	}
+
+	allErrs = append(allErrs, w.validateNICs(r)...)
+
 	if len(allErrs) == 0 {
 		return nil
 	}
@@ -121,6 +167,21 @@ func (w *BareMetalHardwareWebhook) ValidateUpdate(obj runtime.Object, old runtim
 
 	var allErrs field.ErrorList
 
+	// never allow removing conditions
+	var existingConditions []conditionv1.ConditionType
+	for _, cond := range oldBMH.Status.GetConditions() {
+		existingConditions = append(existingConditions, cond.Type)
+	}
+	for _, condType := range existingConditions {
+		cond := r.Status.GetCondition(condType)
+		if cond == nil {
+			allErrs = append(allErrs, field.Forbidden(
+				field.NewPath("status").Child("conditions"),
+				"Cannot remove conditions",
+			))
+		}
+	}
+
 	// Never allow changing system uuid
 	if r.Spec.SystemUUID != oldBMH.Spec.SystemUUID {
 		allErrs = append(allErrs, field.Forbidden(
@@ -128,14 +189,20 @@ func (w *BareMetalHardwareWebhook) ValidateUpdate(obj runtime.Object, old runtim
 			"Cannot change the system uuid",
 		))
 	}
-
-	// never allow changing hardware if it is already set
-	if oldBMH.Status.Hardware != nil && reflect.DeepEqual(r.Status.Hardware, oldBMH.Status.Hardware) == false {
-		allErrs = append(allErrs, field.Forbidden(
-			field.NewPath("status").Child("hardware"),
-			"Cannot change the hardware",
-		))
+	if oldBMH.Status.Hardware != nil {
+		// never allow changing hardware if it is already set
+		if reflect.DeepEqual(r.Status.Hardware, oldBMH.Status.Hardware) == false {
+			allErrs = append(allErrs, field.Forbidden(
+				field.NewPath("status").Child("hardware"),
+				"Cannot change the hardware",
+			))
+		} else {
+			// Validate Hardware
+			allErrs = append(allErrs, validateHardware(r.Status.Hardware, field.NewPath("status"))...)
+		}
 	}
+
+	allErrs = append(allErrs, w.validateNICs(r)...)
 
 	if len(allErrs) == 0 {
 		return nil

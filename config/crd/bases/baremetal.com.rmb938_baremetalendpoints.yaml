@@ -6,29 +6,29 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.4
   creationTimestamp: null
-  name: baremetalinstances.baremetal.com.rmb938
+  name: baremetalendpoints.baremetal.com.rmb938
 spec:
   additionalPrinterColumns:
   - JSONPath: .status.phase
     name: STATUS
     type: string
-  - JSONPath: .spec.hardwareName
-    name: HARDWARE
+  - JSONPath: .status.address.ip
+    name: IP
     type: string
   group: baremetal.com.rmb938
   names:
-    kind: BareMetalInstance
-    listKind: BareMetalInstanceList
-    plural: baremetalinstances
+    kind: BareMetalEndpoint
+    listKind: BareMetalEndpointList
+    plural: baremetalendpoints
     shortNames:
-    - bmi
-    singular: baremetalinstance
+    - bme
+    singular: baremetalendpoint
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: BareMetalInstance is the Schema for the baremetalinstances API
+      description: BareMetalEndpoint is the Schema for the baremetalendpoints API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -43,61 +43,66 @@ spec:
         metadata:
           type: object
         spec:
-          description: BareMetalInstanceSpec defines the desired state of BareMetalInstance
+          description: BareMetalEndpointSpec defines the desired state of BareMetalEndpoint
           properties:
-            hardwareSelector:
-              additionalProperties:
-                type: string
-              type: object
-            tolerations:
+            macs:
+              description: The mac addresses for this endpoint, a bonded nic will
+                have more than 1
               items:
-                description: The pod this Toleration is attached to tolerates any
-                  taint that matches the triple <key,value,effect> using the matching
-                  operator <operator>.
-                properties:
-                  effect:
-                    description: Effect indicates the taint effect to match. Empty
-                      means match all taint effects. When specified, allowed values
-                      are NoSchedule, PreferNoSchedule and NoExecute.
-                    type: string
-                  key:
-                    description: Key is the taint key that the toleration applies
-                      to. Empty means match all taint keys. If the key is empty, operator
-                      must be Exists; this combination means to match all values and
-                      all keys.
-                    type: string
-                  operator:
-                    description: Operator represents a key's relationship to the value.
-                      Valid operators are Exists and Equal. Defaults to Equal. Exists
-                      is equivalent to wildcard for value, so that a pod can tolerate
-                      all taints of a particular category.
-                    type: string
-                  tolerationSeconds:
-                    description: TolerationSeconds represents the period of time the
-                      toleration (which must be of effect NoExecute, otherwise this
-                      field is ignored) tolerates the taint. By default, it is not
-                      set, which means tolerate the taint forever (do not evict).
-                      Zero and negative values will be treated as 0 (evict immediately)
-                      by the system.
-                    format: int64
-                    type: integer
-                  value:
-                    description: Value is the taint value the toleration matches to.
-                      If the operator is Exists, the value should be empty, otherwise
-                      just a regular string.
-                    type: string
-                type: object
+                type: string
+              minItems: 1
               type: array
-          type: object
-        status:
-          description: BareMetalInstanceStatus defines the observed state of BareMetalInstance
-          properties:
-            agentInfo:
+              uniqueItems: true
+            networkRef:
+              description: The reference to the network object
               properties:
-                ip:
+                group:
+                  type: string
+                kind:
+                  type: string
+                name:
                   type: string
               required:
+              - group
+              - kind
+              - name
+              type: object
+            primary:
+              description: If this endpoint is the primary nic
+              type: boolean
+          required:
+          - macs
+          - networkRef
+          - primary
+          type: object
+        status:
+          description: BareMetalEndpointStatus defines the observed state of BareMetalEndpoint
+          properties:
+            address:
+              properties:
+                cidr:
+                  maximum: 128
+                  minimum: 1
+                  type: integer
+                gateway:
+                  type: string
+                ip:
+                  type: string
+                nameservers:
+                  items:
+                    type: string
+                  minItems: 1
+                  type: array
+                  uniqueItems: true
+                search:
+                  items:
+                    type: string
+                  type: array
+              required:
+              - cidr
+              - gateway
               - ip
+              - nameservers
               type: object
             conditions:
               description: Conditions for the object
@@ -131,15 +136,10 @@ spec:
                 - type
                 type: object
               type: array
-            hardwareName:
-              type: string
             phase:
-              enum:
-              - Pending
-              - Networking
-              - Imaging
-              - Running
-              - Cleaning
+              description: We will not enum this network controllers may want to set
+                this to different things as long as it ends at "Addressed" is all
+                that matters
               type: string
           type: object
       required:

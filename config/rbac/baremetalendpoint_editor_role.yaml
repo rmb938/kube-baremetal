@@ -1,0 +1,26 @@
+# permissions to do edit baremetalendpoints.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: baremetalendpoint-editor-role
+rules:
+- apiGroups:
+  - baremetal.rmb938.com
+  resources:
+  - baremetalendpoints
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - baremetal.rmb938.com
+  resources:
+  - baremetalendpoints/status
+  verbs:
+  - get
+  - patch
+  - update

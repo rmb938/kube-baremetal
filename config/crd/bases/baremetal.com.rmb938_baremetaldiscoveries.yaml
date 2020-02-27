@@ -87,6 +87,7 @@ spec:
                     - name
                     - speed
                     type: object
+                  minItems: 1
                   type: array
                 ram:
                   description: The amount of memory in the system
@@ -94,7 +95,6 @@ spec:
                 storage:
                   description: A list of the system's storage devices
                   items:
-                    description: is disc-max >0 the device supports trim
                     properties:
                       name:
                         description: The name of the storage device
@@ -118,6 +118,7 @@ spec:
                     - size
                     - trim
                     type: object
+                  minItems: 1
                   type: array
               required:
               - cpu

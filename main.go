@@ -31,6 +31,7 @@ import (
 
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
 	"github.com/rmb938/kube-baremetal/controllers"
+	"github.com/rmb938/kube-baremetal/controllers/baremetalinstance"
 	"github.com/rmb938/kube-baremetal/pkg/discovery"
 	"github.com/rmb938/kube-baremetal/webhooks"
 	// +kubebuilder:scaffold:imports
@@ -93,17 +94,34 @@ func main() {
 		os.Exit(1)
 	}
 	(&webhooks.BareMetalHardwareWebhook{}).SetupWebhookWithManager(mgr)
-	if err = (&controllers.BareMetalInstanceReconciler{
-		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("BareMetalInstance"),
-		Scheme:   mgr.GetScheme(),
-		Clock:    clock.RealClock{},
-		Recorder: mgr.GetEventRecorderFor("BareMetalInstance"),
+	if err = (&baremetalinstance.Controller{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("BareMetalInstance"),
+		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "BareMetalInstance")
 		os.Exit(1)
 	}
+	if err = (&baremetalinstance.Scheduler{
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("BareMetalInstanceScheduler"),
+		Scheme:   mgr.GetScheme(),
+		Clock:    clock.RealClock{},
+		Recorder: mgr.GetEventRecorderFor("BareMetalHardwareScheduler"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "BareMetalInstanceScheduler")
+		os.Exit(1)
+	}
 	(&webhooks.BareMetalInstanceWebhook{}).SetupWebhookWithManager(mgr)
+	if err = (&controllers.BareMetalEndpointReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("BareMetalEndpoint"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "BareMetalEndpoint")
+		os.Exit(1)
+	}
+	(&webhooks.BareMetalEndpointWebhook{}).SetupWebhookWithManager(mgr)
 	// +kubebuilder:scaffold:builder
 
 	signalHandler := ctrl.SetupSignalHandler()

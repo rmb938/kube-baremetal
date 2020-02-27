@@ -29,6 +29,24 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /mutate-baremetal-rmb938-com-v1alpha1-baremetalendpoint
+  failurePolicy: Fail
+  name: mbaremetalendpoint.kb.io
+  rules:
+  - apiGroups:
+    - baremetal.rmb938.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - baremetalendpoints
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
       path: /mutate-baremetal-com-rmb938-v1alpha1-baremetalhardware
   failurePolicy: Fail
   name: mbaremetalhardware.kb.io
@@ -60,6 +78,24 @@ webhooks:
     - UPDATE
     resources:
     - baremetalinstances
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-baremetal-rmb938-com-v1alpha1-baremetalendpoint
+  failurePolicy: Fail
+  name: mbaremetalendpoint.kb.io
+  rules:
+  - apiGroups:
+    - baremetal.rmb938.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - baremetalendpoints
 
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -86,6 +122,24 @@ webhooks:
     - UPDATE
     resources:
     - baremetaldiscoveries
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-baremetal-rmb938-com-v1alpha1-baremetalendpoint
+  failurePolicy: Fail
+  name: vbaremetalendpoint.kb.io
+  rules:
+  - apiGroups:
+    - baremetal.rmb938.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - baremetalendpoints
 - clientConfig:
     caBundle: Cg==
     service:
@@ -122,3 +176,21 @@ webhooks:
     - UPDATE
     resources:
     - baremetalinstances
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-baremetal-rmb938-com-v1alpha1-baremetalendpoint
+  failurePolicy: Fail
+  name: vbaremetalendpoint.kb.io
+  rules:
+  - apiGroups:
+    - baremetal.rmb938.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - baremetalendpoints

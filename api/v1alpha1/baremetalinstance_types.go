@@ -39,19 +39,18 @@ type BareMetalInstanceSpec struct {
 
 	// +kubebuilder:validation:Optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	HardwareName string `json:"hardwareName,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=Pending;Imaging;Running;Cleaning
+// +kubebuilder:validation:Enum=Pending;Networking;Imaging;Running;Cleaning
 type BareMetalInstanceStatusPhase string
 
 const (
-	BareMetalInstanceStatusPhasePending  BareMetalInstanceStatusPhase = "Pending"
-	BareMetalInstanceStatusPhaseImaging  BareMetalInstanceStatusPhase = "Imaging"
-	BareMetalInstanceStatusPhaseRunning  BareMetalInstanceStatusPhase = "Running"
-	BareMetalInstanceStatusPhaseCleaning BareMetalInstanceStatusPhase = "Cleaning"
+	BareMetalInstanceStatusPhasePending      BareMetalInstanceStatusPhase = "Pending"
+	BareMetalInstanceStatusPhaseProvisioning BareMetalInstanceStatusPhase = "Provisioning"
+	BareMetalInstanceStatusPhaseRunning      BareMetalInstanceStatusPhase = "Running"
+	BareMetalInstanceStatusPhaseCleaning     BareMetalInstanceStatusPhase = "Cleaning"
+	BareMetalInstanceStatusPhaseTerminating  BareMetalInstanceStatusPhase = "Terminating"
+	BareMetalInstanceStatusPhaseTerminated   BareMetalInstanceStatusPhase = "Terminated"
 )
 
 type BareMetalInstanceStatusAgentInfo struct {
@@ -71,6 +70,9 @@ type BareMetalInstanceStatus struct {
 	AgentInfo *BareMetalInstanceStatusAgentInfo `json:"agentInfo,omitempty"`
 
 	// +kubebuilder:validation:Optional
+	HardwareName string `json:"hardwareName,omitempty"`
+
+	// +kubebuilder:validation:Optional
 	Phase BareMetalInstanceStatusPhase `json:"phase,omitempty"`
 }
 
@@ -78,6 +80,7 @@ type BareMetalInstanceStatus struct {
 // +kubebuilder:resource:shortName=bmi
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.phase`
+// +kubebuilder:printcolumn:name="HARDWARE",type=string,JSONPath=`.status.hardwareName`
 
 // BareMetalInstance is the Schema for the baremetalinstances API
 type BareMetalInstance struct {
@@ -103,6 +106,9 @@ type BareMetalInstanceList struct {
 const (
 	// Condition Types
 	BareMetalHardwareConditionTypeInstanceScheduled conditionv1.ConditionType = "InstanceScheduled"
+	BareMetalHardwareConditionTypeInstanceNetworked conditionv1.ConditionType = "InstanceNetworkConfigured"
+	BareMetalHardwareConditionTypeInstanceImaged    conditionv1.ConditionType = "InstanceImaged"
+	BareMetalHardwareConditionTypeInstanceCleaned   conditionv1.ConditionType = "InstanceCleaned"
 
 	// Condition Reasons
 
@@ -113,6 +119,11 @@ const (
 
 	BareMetalInstanceScheduleEventReason   string = "InstanceScheduled"
 	BareMetalInstanceUnscheduleEventReason string = "InstanceUnscheduled"
+
+	BareMetalInstanceNetworkingEventReason string = "InstanceNetworking"
+	BareMetalInstanceNetworkedEventReason  string = "InstanceNetworked"
+
+	BareMetalInstanceNotCleanedEventReason string = "InstanceNotCleaned"
 )
 
 func init() {

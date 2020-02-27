@@ -38,7 +38,6 @@ type BareMetalDiscoveryHardwareCPU struct {
 	CPUS resource.Quantity `json:"cpus"`
 }
 
-// is disc-max >0 the device supports trim
 type BareMetalDiscoveryHardwareStorage struct {
 	// The name of the storage device
 	// +kubebuilder:validation:Required
@@ -86,9 +85,13 @@ type BareMetalDiscoveryHardware struct {
 	Ram resource.Quantity `json:"ram"`
 
 	// A list of the system's storage devices
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
 	Storage []BareMetalDiscoveryHardwareStorage `json:"storage"`
 
 	// A list of she system's nics
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
 	NICS []BareMetalDiscoveryHardwareNIC `json:"nics"`
 }
 
