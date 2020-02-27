@@ -284,6 +284,7 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 func (r *Provisioner) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("BareMetalInstanceProvisioner").
 		For(&baremetalv1alpha1.BareMetalInstance{}).
 		Owns(&baremetalv1alpha1.BareMetalEndpoint{}).
 		// This will cause BMH changes to cause a BMI reconcile if instance ref is set

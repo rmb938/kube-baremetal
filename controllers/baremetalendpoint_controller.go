@@ -33,8 +33,8 @@ type BareMetalEndpointReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=baremetal.rmb938.com,resources=baremetalendpoints,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=baremetal.rmb938.com,resources=baremetalendpoints/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=baremetal.com.rmb938,resources=baremetalendpoints,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=baremetal.com.rmb938,resources=baremetalendpoints/status,verbs=get;update;patch
 
 func (r *BareMetalEndpointReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()

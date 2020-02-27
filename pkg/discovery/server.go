@@ -245,7 +245,7 @@ func (s *server) ready(c *gin.Context) {
 		return
 	}
 
-	if bmi.Status.Phase != baremetalv1alpha1.BareMetalInstanceStatusPhaseImaging && bmi.Status.Phase != baremetalv1alpha1.BareMetalInstanceStatusPhaseCleaning {
+	if bmi.Status.Phase != baremetalv1alpha1.BareMetalInstanceStatusPhaseProvisioning && bmi.Status.Phase != baremetalv1alpha1.BareMetalInstanceStatusPhaseCleaning {
 		c.Status(http.StatusNotFound)
 		c.Abort()
 		return

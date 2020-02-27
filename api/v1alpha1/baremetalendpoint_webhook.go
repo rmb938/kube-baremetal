@@ -35,7 +35,7 @@ func (r *BareMetalEndpoint) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-// +kubebuilder:webhook:path=/mutate-baremetal-rmb938-com-v1alpha1-baremetalendpoint,mutating=true,failurePolicy=fail,groups=baremetal.rmb938.com,resources=baremetalendpoints,verbs=create;update,versions=v1alpha1,name=mbaremetalendpoint.kb.io
+// +kubebuilder:webhook:path=/mutate-baremetal-com-rmb938-v1alpha1-baremetalendpoint,mutating=true,failurePolicy=fail,groups=baremetal.com.rmb938,resources=baremetalendpoints,verbs=create;update,versions=v1alpha1,name=mbaremetalendpoint.kb.io
 
 var _ webhook.Defaulter = &BareMetalEndpoint{}
 
@@ -47,7 +47,7 @@ func (r *BareMetalEndpoint) Default() {
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-// +kubebuilder:webhook:verbs=create;update,path=/validate-baremetal-rmb938-com-v1alpha1-baremetalendpoint,mutating=false,failurePolicy=fail,groups=baremetal.rmb938.com,resources=baremetalendpoints,versions=v1alpha1,name=vbaremetalendpoint.kb.io
+// +kubebuilder:webhook:verbs=create;update,path=/validate-baremetal-com-rmb938-v1alpha1-baremetalendpoint,mutating=false,failurePolicy=fail,groups=baremetal.com.rmb938,resources=baremetalendpoints,versions=v1alpha1,name=vbaremetalendpoint.kb.io
 
 var _ webhook.Validator = &BareMetalEndpoint{}
 

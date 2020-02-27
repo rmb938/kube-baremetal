@@ -2,10 +2,10 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/baremetal.com.rmb938_baremetaldiscoveries.yaml
-- bases/baremetal.com.rmb938_baremetalhardwares.yaml
-- bases/baremetal.com.rmb938_baremetalinstances.yaml
-- bases/baremetal.rmb938.com_baremetalendpoints.yaml
+  - bases/baremetal.com.rmb938_baremetaldiscoveries.yaml
+  - bases/baremetal.com.rmb938_baremetalhardwares.yaml
+  - bases/baremetal.com.rmb938_baremetalinstances.yaml
+  - bases/baremetal.com.rmb938_baremetalendpoints.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:
@@ -27,4 +27,4 @@ patchesStrategicMerge:
 
 # the following config is for teaching kustomize how to do kustomization for CRDs.
 configurations:
-- kustomizeconfig.yaml
+  - kustomizeconfig.yaml

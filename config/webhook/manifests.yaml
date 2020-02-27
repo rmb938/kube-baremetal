@@ -29,12 +29,12 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-baremetal-rmb938-com-v1alpha1-baremetalendpoint
+      path: /mutate-baremetal-com-rmb938-v1alpha1-baremetalendpoint
   failurePolicy: Fail
   name: mbaremetalendpoint.kb.io
   rules:
   - apiGroups:
-    - baremetal.rmb938.com
+    - baremetal.com.rmb938
     apiVersions:
     - v1alpha1
     operations:
@@ -78,24 +78,6 @@ webhooks:
     - UPDATE
     resources:
     - baremetalinstances
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: webhook-service
-      namespace: system
-      path: /mutate-baremetal-rmb938-com-v1alpha1-baremetalendpoint
-  failurePolicy: Fail
-  name: mbaremetalendpoint.kb.io
-  rules:
-  - apiGroups:
-    - baremetal.rmb938.com
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - baremetalendpoints
 
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -127,12 +109,12 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-baremetal-rmb938-com-v1alpha1-baremetalendpoint
+      path: /validate-baremetal-com-rmb938-v1alpha1-baremetalendpoint
   failurePolicy: Fail
   name: vbaremetalendpoint.kb.io
   rules:
   - apiGroups:
-    - baremetal.rmb938.com
+    - baremetal.com.rmb938
     apiVersions:
     - v1alpha1
     operations:
@@ -176,21 +158,3 @@ webhooks:
     - UPDATE
     resources:
     - baremetalinstances
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-baremetal-rmb938-com-v1alpha1-baremetalendpoint
-  failurePolicy: Fail
-  name: vbaremetalendpoint.kb.io
-  rules:
-  - apiGroups:
-    - baremetal.rmb938.com
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - baremetalendpoints

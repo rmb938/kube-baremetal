@@ -52,7 +52,6 @@ spec:
                 type: string
               minItems: 1
               type: array
-              uniqueItems: true
             networkRef:
               description: The reference to the network object
               properties:
@@ -93,7 +92,6 @@ spec:
                     type: string
                   minItems: 1
                   type: array
-                  uniqueItems: true
                 search:
                   items:
                     type: string

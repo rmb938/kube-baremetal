@@ -4,17 +4,17 @@ kind: ClusterRole
 metadata:
   name: baremetalendpoint-viewer-role
 rules:
-- apiGroups:
-  - baremetal.rmb938.com
-  resources:
-  - baremetalendpoints
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - baremetal.rmb938.com
-  resources:
-  - baremetalendpoints/status
-  verbs:
-  - get
+  - apiGroups:
+      - baremetal.com.rmb938
+    resources:
+      - baremetalendpoints
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - baremetal.com.rmb938
+    resources:
+      - baremetalendpoints/status
+    verbs:
+      - get

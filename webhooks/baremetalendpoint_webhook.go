@@ -49,10 +49,6 @@ func (w *BareMetalEndpointWebhook) SetupWebhookWithManager(mgr ctrl.Manager) {
 	hookServer.Register("/validate-baremetal-com-rmb938-v1alpha1-baremetalendpoint", admission.ValidatingWebhookFor(w, &baremetalv1alpha1.BareMetalHardware{}))
 }
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-
-// +kubebuilder:webhook:path=/mutate-baremetal-rmb938-com-v1alpha1-baremetalendpoint,mutating=true,failurePolicy=fail,groups=baremetal.rmb938.com,resources=baremetalendpoints,verbs=create;update,versions=v1alpha1,name=mbaremetalendpoint.kb.io
-
 var _ webhook.Defaulter = &BareMetalEndpointWebhook{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
@@ -63,9 +59,6 @@ func (w *BareMetalEndpointWebhook) Default(obj runtime.Object) {
 
 	// TODO(user): fill in your defaulting logic.
 }
-
-// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-// +kubebuilder:webhook:verbs=create;update,path=/validate-baremetal-rmb938-com-v1alpha1-baremetalendpoint,mutating=false,failurePolicy=fail,groups=baremetal.rmb938.com,resources=baremetalendpoints,versions=v1alpha1,name=vbaremetalendpoint.kb.io
 
 var _ webhook.Validator = &BareMetalEndpointWebhook{}
 
@@ -107,7 +100,7 @@ func (w *BareMetalEndpointWebhook) ValidateUpdate(obj runtime.Object, old runtim
 			"Cannot set phase to empty string",
 		))
 	}
-	
+
 	// never allow removing conditions
 	var existingConditions []conditionv1.ConditionType
 	for _, cond := range oldBME.Status.GetConditions() {
@@ -145,6 +138,16 @@ func (w *BareMetalEndpointWebhook) ValidateUpdate(obj runtime.Object, old runtim
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(field.NewPath("spec").Child("macs").Index(i), mac, err.Error()))
 		}
+
+		// check to make sure macs are unique
+		for j, m := range r.Spec.MACS {
+			if i == j {
+				continue
+			}
+			if mac == m {
+				allErrs = append(allErrs, field.Duplicate(field.NewPath("spec").Child("macs").Index(i), "duplicate mac"))
+			}
+		}
 	}
 
 	if r.Status.Address != nil {
@@ -172,6 +175,16 @@ func (w *BareMetalEndpointWebhook) ValidateUpdate(obj runtime.Object, old runtim
 				ip := net.ParseIP(ns)
 				if ip == nil {
 					allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("address").Child("nameservers").Index(i), ns, "invalid ip for nameserver"))
+				}
+
+				for j, n := range r.Status.Address.Nameservers {
+					if i == j {
+						continue
+					}
+
+					if ns == n {
+						allErrs = append(allErrs, field.Duplicate(field.NewPath("status").Child("address").Child("nameservers").Index(i), "duplicate nameserver"))
+					}
 				}
 			}
 

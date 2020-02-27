@@ -4,23 +4,23 @@ kind: ClusterRole
 metadata:
   name: baremetalendpoint-editor-role
 rules:
-- apiGroups:
-  - baremetal.rmb938.com
-  resources:
-  - baremetalendpoints
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - baremetal.rmb938.com
-  resources:
-  - baremetalendpoints/status
-  verbs:
-  - get
-  - patch
-  - update
+  - apiGroups:
+      - baremetal.com.rmb938
+    resources:
+      - baremetalendpoints
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - baremetal.com.rmb938
+    resources:
+      - baremetalendpoints/status
+    verbs:
+      - get
+      - patch
+      - update

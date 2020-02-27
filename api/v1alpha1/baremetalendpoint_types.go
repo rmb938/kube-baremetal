@@ -38,7 +38,6 @@ type BareMetalEndpointSpec struct {
 	// The mac addresses for this endpoint, a bonded nic will have more than 1
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
-	// +kubebuilder:validation:UniqueItems=true
 	MACS []string `json:"macs"`
 
 	// The reference to the network object
@@ -67,7 +66,6 @@ type BareMetalEndpointStatusAddress struct {
 	Gateway string `json:"gateway"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
-	// +kubebuilder:validation:UniqueItems=true
 	Nameservers []string `json:"nameservers"`
 	// +kubebuilder:validation:Optional
 	Search []string `json:"search,omitempty"`

@@ -293,6 +293,7 @@ func (r *Scheduler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("BareMetalInstanceScheduler").
 		For(&baremetalv1alpha1.BareMetalInstance{}).
 		Complete(r)
 }
