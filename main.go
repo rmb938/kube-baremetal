@@ -112,6 +112,16 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "BareMetalInstanceScheduler")
 		os.Exit(1)
 	}
+	if err = (&baremetalinstance.Provisioner{
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("BareMetalInstanceProvisioner"),
+		Scheme:   mgr.GetScheme(),
+		Clock:    clock.RealClock{},
+		Recorder: mgr.GetEventRecorderFor("BareMetalHardwareProvisioner"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "BareMetalInstanceProvisioner")
+		os.Exit(1)
+	}
 	(&webhooks.BareMetalInstanceWebhook{}).SetupWebhookWithManager(mgr)
 	if err = (&controllers.BareMetalEndpointReconciler{
 		Client: mgr.GetClient(),
