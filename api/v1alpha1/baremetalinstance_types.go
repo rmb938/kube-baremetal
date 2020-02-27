@@ -41,7 +41,7 @@ type BareMetalInstanceSpec struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=Pending;Networking;Imaging;Running;Cleaning
+// +kubebuilder:validation:Enum=Pending;Provisioning;Imaging;Running;Cleaning;Terminating;Terminated
 type BareMetalInstanceStatusPhase string
 
 const (

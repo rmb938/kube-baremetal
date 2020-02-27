@@ -12,7 +12,7 @@ spec:
   - JSONPath: .status.phase
     name: STATUS
     type: string
-  - JSONPath: .spec.hardwareName
+  - JSONPath: .status.hardwareName
     name: HARDWARE
     type: string
   group: baremetal.com.rmb938
@@ -136,10 +136,12 @@ spec:
             phase:
               enum:
               - Pending
-              - Networking
+              - Provisioning
               - Imaging
               - Running
               - Cleaning
+              - Terminating
+              - Terminated
               type: string
           type: object
       required:
