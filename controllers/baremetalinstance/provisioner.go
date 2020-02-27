@@ -228,7 +228,7 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	// TODO: do networking stuffs
 	//  create endpoints if needed
-	//  wait for all endpoints to have IPs
+	//  wait for all endpoints to have IPs before setting cond to true
 
 	// network cond is true so lets image
 	if networkedCond.Status == conditionv1.ConditionStatusTrue {
@@ -253,6 +253,11 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		// once we are done imaging set phase to running
 		if imagedCond.Status == conditionv1.ConditionStatusTrue {
 			bmi.Status.Phase = baremetalv1alpha1.BareMetalInstanceStatusPhaseRunning
+			err = r.Status().Update(ctx, bmi)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
 		}
 
 		// TODO: imaging stuffs
