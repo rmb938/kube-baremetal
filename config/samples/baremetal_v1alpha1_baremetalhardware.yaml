@@ -7,3 +7,4 @@ spec:
   imageDrive: nvme0n1
   nics:
     - name: eth0
+      primary: true

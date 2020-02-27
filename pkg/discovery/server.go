@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/location"
@@ -146,10 +147,12 @@ func (s *server) ipxeBoot(c *gin.Context) {
 		return
 	}
 
-	cmdLine := string(cmdLineBytes)
+	cmdLine := strings.TrimSpace(string(cmdLineBytes))
 
 	u := location.Get(c)
 	cmdLine += " discovery_url=" + u.String()
+
+	s.logger.Info("booting into agent", "cmdline", cmdLine)
 
 	c.String(http.StatusOK, "#!ipxe\necho Booting into agent\ninitrd files/linuxkit-agent-initrd.img\nchain files/linuxkit-agent-kernel %s", cmdLine)
 }

@@ -180,16 +180,19 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	if bmh == nil {
 		// TODO: something here, bmh is gone so we can't provision
+		r.Recorder.Eventf(bmi, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalInstanceNotScheduleEventReason, "Cannot find BareMetalHardware %s to schedule onto", bmi.Status.HardwareName)
 		return ctrl.Result{}, nil
 	}
 
-	if bmh.DeletionTimestamp.IsZero() {
+	if bmh.DeletionTimestamp.IsZero() == false {
 		// TODO: something here, bmh is deleting so we can't provision
+		r.Recorder.Eventf(bmi, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalInstanceNotScheduleEventReason, "Cannot schedule onto BareMetalHardware %s when it is deleting", bmi.Status.HardwareName)
 		return ctrl.Result{}, nil
 	}
 
 	if bmh.Status.InstanceRef != nil && bmh.Status.InstanceRef.UID != bmi.UID {
 		// TODO: something here, instance ref is not us so we can't provision
+		r.Recorder.Eventf(bmi, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalInstanceNotScheduleEventReason, "BareMetalHardware %s thinks another instance is scheduled on it", bmi.Status.HardwareName)
 		return ctrl.Result{}, nil
 	}
 

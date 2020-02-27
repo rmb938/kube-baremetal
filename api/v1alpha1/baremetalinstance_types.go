@@ -117,8 +117,9 @@ const (
 	BareMetalInstanceHardwareDeletingEventReason    string = "HardwareDeleting"
 	BareMetalInstanceHardwareHasInstanceEventReason string = "HardwareHasInstance"
 
-	BareMetalInstanceScheduleEventReason   string = "InstanceScheduled"
-	BareMetalInstanceUnscheduleEventReason string = "InstanceUnscheduled"
+	BareMetalInstanceScheduleEventReason    string = "InstanceScheduled"
+	BareMetalInstanceNotScheduleEventReason string = "InstanceNotScheduled"
+	BareMetalInstanceUnscheduleEventReason  string = "InstanceUnscheduled"
 
 	BareMetalInstanceNetworkingEventReason string = "InstanceNetworking"
 	BareMetalInstanceNetworkedEventReason  string = "InstanceNetworked"

@@ -273,7 +273,7 @@ func (r *Scheduler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	bmi.Status.HardwareName = acceptableBMH[rand.Intn(len(acceptableBMH))].Name
-	err = r.Update(ctx, bmi)
+	err = r.Status().Update(ctx, bmi)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
