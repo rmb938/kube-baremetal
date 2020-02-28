@@ -84,11 +84,26 @@ spec:
                   name:
                     description: The name of the nic
                     type: string
+                  networkRef:
+                    description: The reference to the network object
+                    properties:
+                      group:
+                        type: string
+                      kind:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                    - group
+                    - kind
+                    - name
+                    type: object
                   primary:
                     description: If the nic is the primary nic
                     type: boolean
                 required:
                 - name
+                - networkRef
                 - primary
                 type: object
               type: array
