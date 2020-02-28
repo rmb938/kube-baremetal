@@ -2,6 +2,7 @@ package baremetalinstance
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -77,6 +78,7 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		// if cleaned cond is true set to terminating
 		if cleanedCond.Status == conditionv1.ConditionStatusTrue {
 			bmi.Status.Phase = baremetalv1alpha1.BareMetalInstanceStatusPhaseTerminating
+			bmi.Status.AgentInfo = nil
 			err := r.Status().Update(ctx, bmi)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -148,8 +150,12 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if err != nil {
 				return ctrl.Result{}, err
 			}
+			r.Recorder.Eventf(bmi, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceCleanedEventReason, "Instance was cleaned off of BareMetalHardware %s", bmh.Name)
 			return ctrl.Result{}, nil
 		}
+
+		r.Recorder.Eventf(bmi, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceCleaningEventReason, "Cleaning the instance off of BareMetalHardware %s", bmh.Name)
+		r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareCleaningEventReason, "Cleaning the BareMetalInstance %s off of the hardware", bmi.Name)
 
 		// TODO: do cleaning stuffs
 
@@ -160,6 +166,7 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+		r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareCleanedEventReason, "Cleaned the BareMetalInstance %s off of the hardware", bmi.Name)
 		return ctrl.Result{}, nil
 	}
 
@@ -179,21 +186,25 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	if bmh == nil {
-		// TODO: something here, bmh is gone so we can't provision
-		r.Recorder.Eventf(bmi, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalInstanceNotScheduleEventReason, "Cannot find BareMetalHardware %s to schedule onto", bmi.Status.HardwareName)
+		r.Recorder.Eventf(bmi, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalInstanceProvisioningEventReason, "Cannot find BareMetalHardware %s to provision onto", bmi.Status.HardwareName)
 		return ctrl.Result{}, nil
 	}
 
 	if bmh.DeletionTimestamp.IsZero() == false {
-		// TODO: something here, bmh is deleting so we can't provision
-		r.Recorder.Eventf(bmi, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalInstanceNotScheduleEventReason, "Cannot schedule onto BareMetalHardware %s when it is deleting", bmi.Status.HardwareName)
+		r.Recorder.Eventf(bmi, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalInstanceProvisioningEventReason, "Cannot provision onto BareMetalHardware %s when it is deleting", bmi.Status.HardwareName)
 		return ctrl.Result{}, nil
 	}
 
 	if bmh.Status.InstanceRef != nil && bmh.Status.InstanceRef.UID != bmi.UID {
-		// TODO: something here, instance ref is not us so we can't provision
-		r.Recorder.Eventf(bmi, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalInstanceNotScheduleEventReason, "BareMetalHardware %s thinks another instance is scheduled on it", bmi.Status.HardwareName)
+		r.Recorder.Eventf(bmi, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalInstanceProvisioningEventReason, "BareMetalHardware %s thinks another instance is provisioned on it", bmi.Status.HardwareName)
 		return ctrl.Result{}, nil
+	}
+
+	for _, t := range bmh.Spec.Taints {
+		if t.Key == baremetalv1alpha1.BareMetalHardwareTaintKeyNotReady {
+			r.Recorder.Eventf(bmi, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalInstanceProvisioningEventReason, "Cannot provision onto BareMetalHardware %s when it is not ready", bmi.Status.HardwareName)
+			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+		}
 	}
 
 	// if bmh instance ref is nil set it to bmi
@@ -229,9 +240,120 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	// TODO: do networking stuffs
-	//  create endpoints if needed
-	//  wait for all endpoints to have IPs before setting cond to true
+	if networkedCond.Status == conditionv1.ConditionStatusFalse {
+		allAddressed := true
+	nicLoop:
+		for _, nic := range bmh.Spec.NICS {
+			bmeList := &baremetalv1alpha1.BareMetalEndpointList{}
+			err = r.List(ctx, bmeList, client.MatchingLabels{baremetalv1alpha1.BareMetalEndpointInstanceLabel: bmi.Name, baremetalv1alpha1.BareMetalEndpointNICLabel: nic.Name})
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			// we only care about bme's owned by us
+			ourBMEs := make([]baremetalv1alpha1.BareMetalEndpoint, 0)
+			for _, bme := range bmeList.Items {
+				ownedByUs := false
+
+				for _, ownerRef := range bme.OwnerReferences {
+					if ownerRef.UID == bmi.UID {
+						ownedByUs = true
+					}
+				}
+
+				if ownedByUs == true {
+					ourBMEs = append(ourBMEs, bme)
+				}
+			}
+
+			switch len(ourBMEs) {
+			case 0:
+				allAddressed = false
+				bme := &baremetalv1alpha1.BareMetalEndpoint{
+					ObjectMeta: metav1.ObjectMeta{
+						GenerateName: bmi.Name,
+						Namespace:    bmi.Namespace,
+						Labels: map[string]string{
+							baremetalv1alpha1.BareMetalEndpointInstanceLabel: bmi.Name,
+							baremetalv1alpha1.BareMetalEndpointNICLabel:      nic.Name,
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         bmi.APIVersion,
+								Kind:               bmi.Kind,
+								Name:               bmi.Name,
+								UID:                bmi.UID,
+								Controller:         func(b bool) *bool { return &b }(true),
+								BlockOwnerDeletion: func(b bool) *bool { return &b }(false),
+							},
+						},
+					},
+					Spec: baremetalv1alpha1.BareMetalEndpointSpec{
+						Primary:    nic.Primary,
+						NetworkRef: nic.NetworkRef,
+					},
+				}
+
+				// Compile all mac addresses
+				macs := make([]string, 0)
+				for _, interf := range bmh.Status.Hardware.NICS {
+					if nic.Bond == nil {
+						if interf.Name == nic.Name {
+							macs = append(macs, interf.MAC)
+						}
+					} else {
+						for _, bondInterf := range nic.Bond.Interfaces {
+							if interf.Name == bondInterf {
+								macs = append(macs, interf.MAC)
+							}
+						}
+					}
+				}
+				// Set mac addresses
+				bme.Spec.MACS = macs
+
+				err := r.Create(ctx, bme)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				break nicLoop
+			case 1:
+				bme := ourBMEs[0]
+				if bme.Status.Phase != baremetalv1alpha1.BareMetalEndpointStatusPhaseAddressed {
+					allAddressed = false
+					break nicLoop
+				}
+				break
+			default:
+				allAddressed = false
+				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalInstanceNetworkingEventReason, "Found multiple BareMetalEndpoints for nic %s, this shouldn't happen", nic.Name)
+				return ctrl.Result{}, nil
+			}
+		}
+
+		if allAddressed == false {
+			r.Recorder.Eventf(bmi, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceNetworkingEventReason, "Waiting for all BareMetalEndpoints to be addressed")
+
+			// I know we will automatically reconcile when the endpoints update, but the events will eventually disappear
+			return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+		} else {
+			nowTime := metav1.NewTime(r.Clock.Now())
+			err := bmi.Status.SetCondition(&conditionv1.StatusCondition{
+				Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeInstanceNetworked,
+				Status:             conditionv1.ConditionStatusTrue,
+				LastTransitionTime: &nowTime,
+			})
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			err = r.Status().Update(ctx, bmi)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			r.Recorder.Eventf(bmi, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceNetworkedEventReason, "All BareMetalEndpoints have been addressed")
+			return ctrl.Result{}, nil
+		}
+	}
 
 	// network cond is true so lets image
 	if networkedCond.Status == conditionv1.ConditionStatusTrue {
@@ -256,11 +378,22 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		// once we are done imaging set phase to running
 		if imagedCond.Status == conditionv1.ConditionStatusTrue {
 			bmi.Status.Phase = baremetalv1alpha1.BareMetalInstanceStatusPhaseRunning
+			bmi.Status.AgentInfo = nil
 			err = r.Status().Update(ctx, bmi)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
+		}
+
+		// TODO: bmc (re)boot instance
+
+		// wait for agent info to be set
+		if bmi.Status.AgentInfo == nil {
+			r.Recorder.Eventf(bmi, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalInstanceNoAgentEventReason, "Agent has not reported in yet")
+
+			// I know we will automatically reconcile when the agent reports in, but the events will eventually disappear
+			return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
 		}
 
 		// TODO: imaging stuffs

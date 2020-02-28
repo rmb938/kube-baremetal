@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
+	baremetalapi "github.com/rmb938/kube-baremetal/api"
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
 	conditionv1 "github.com/rmb938/kube-baremetal/apis/condition/v1"
 	"github.com/rmb938/kube-baremetal/webhook"
@@ -45,8 +46,8 @@ func (w *BareMetalEndpointWebhook) SetupWebhookWithManager(mgr ctrl.Manager) {
 	w.client = mgr.GetClient()
 	hookServer := mgr.GetWebhookServer()
 
-	hookServer.Register("/mutate-baremetal-com-rmb938-v1alpha1-baremetalendpoint", admission.DefaultingWebhookFor(w, &baremetalv1alpha1.BareMetalHardware{}))
-	hookServer.Register("/validate-baremetal-com-rmb938-v1alpha1-baremetalendpoint", admission.ValidatingWebhookFor(w, &baremetalv1alpha1.BareMetalHardware{}))
+	hookServer.Register("/mutate-baremetal-com-rmb938-v1alpha1-baremetalendpoint", admission.DefaultingWebhookFor(w, &baremetalv1alpha1.BareMetalEndpoint{}))
+	hookServer.Register("/validate-baremetal-com-rmb938-v1alpha1-baremetalendpoint", admission.ValidatingWebhookFor(w, &baremetalv1alpha1.BareMetalEndpoint{}))
 }
 
 var _ webhook.Defaulter = &BareMetalEndpointWebhook{}
@@ -57,7 +58,12 @@ func (w *BareMetalEndpointWebhook) Default(obj runtime.Object) {
 
 	baremetalendpointlog.Info("default", "name", r.Name)
 
-	// TODO(user): fill in your defaulting logic.
+	if r.DeletionTimestamp.IsZero() {
+		// add the finalizer
+		if baremetalapi.HasFinalizer(r, baremetalv1alpha1.BareMetalEndpointFinalizer) == false {
+			r.Finalizers = append(r.Finalizers, baremetalv1alpha1.BareMetalEndpointFinalizer)
+		}
+	}
 }
 
 var _ webhook.Validator = &BareMetalEndpointWebhook{}

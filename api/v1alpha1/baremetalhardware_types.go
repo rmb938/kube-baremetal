@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	conditionv1 "github.com/rmb938/kube-baremetal/apis/condition/v1"
+	kbmeta "github.com/rmb938/kube-baremetal/apis/meta/v1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -70,7 +71,9 @@ type BareMetalHardwareNIC struct {
 	// +kubebuilder:validation:Optional
 	Bond *BareMetalHardwareNICBond `json:"bond,omitempty"`
 
-	// TODO: network ref here
+	// The reference to the network object
+	// +kubebuilder:validation:Required
+	NetworkRef kbmeta.ObjectReference `json:"networkRef"`
 }
 
 // BareMetalHardwareSpec defines the desired state of BareMetalHardware
@@ -180,6 +183,9 @@ const (
 	BareMetalHardwareDiscoveryNotFoundEventReason  string = "DiscoveryNotFound"
 	BareMetalHardwareManyDiscoveryFoundEventReason string = "ManyDiscoveryFound"
 	BareMetalHardwareDiscoveryFoundEventReason     string = "DiscoveryFound"
+
+	BareMetalHardwareCleaningEventReason string = "HardwareCleaning"
+	BareMetalHardwareCleanedEventReason  string = "HardwareCleaned"
 )
 
 func init() {

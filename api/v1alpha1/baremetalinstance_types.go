@@ -113,18 +113,19 @@ const (
 	// Condition Reasons
 
 	// Event Reasons
-	BareMetalInstanceHardwareNotFoundEventReason    string = "HardwareNotFound"
-	BareMetalInstanceHardwareDeletingEventReason    string = "HardwareDeleting"
-	BareMetalInstanceHardwareHasInstanceEventReason string = "HardwareHasInstance"
+	BareMetalInstanceScheduleEventReason   string = "InstanceScheduled"
+	BareMetalInstanceUnscheduleEventReason string = "InstanceUnscheduled"
 
-	BareMetalInstanceScheduleEventReason    string = "InstanceScheduled"
-	BareMetalInstanceNotScheduleEventReason string = "InstanceNotScheduled"
-	BareMetalInstanceUnscheduleEventReason  string = "InstanceUnscheduled"
+	BareMetalInstanceProvisioningEventReason string = "InstanceProvisioning"
 
 	BareMetalInstanceNetworkingEventReason string = "InstanceNetworking"
 	BareMetalInstanceNetworkedEventReason  string = "InstanceNetworked"
 
+	BareMetalInstanceNoAgentEventReason string = "InstanceNoAgent"
+
 	BareMetalInstanceNotCleanedEventReason string = "InstanceNotCleaned"
+	BareMetalInstanceCleaningEventReason   string = "InstanceCleaning"
+	BareMetalInstanceCleanedEventReason    string = "InstanceCleaned"
 )
 
 func init() {

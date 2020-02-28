@@ -16,6 +16,7 @@ limitations under the License.
 package webhooks
 
 import (
+	"net"
 	"reflect"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -82,6 +83,13 @@ func (w *BareMetalInstanceWebhook) ValidateCreate(obj runtime.Object) error {
 		))
 	}
 
+	if r.Status.AgentInfo != nil {
+		allErrs = append(allErrs, field.Forbidden(
+			field.NewPath("status").Child("agentInfo"),
+			"Cannot set agentInfo during creation",
+		))
+	}
+
 	if len(allErrs) == 0 {
 		return nil
 	}
@@ -137,6 +145,21 @@ func (w *BareMetalInstanceWebhook) ValidateUpdate(obj runtime.Object, old runtim
 			field.NewPath("spec").Child("tolerations"),
 			"Cannot change the tolerations",
 		))
+	}
+
+	if r.Status.AgentInfo != nil {
+		if r.Status.Phase != baremetalv1alpha1.BareMetalInstanceStatusPhaseProvisioning &&
+			r.Status.Phase != baremetalv1alpha1.BareMetalInstanceStatusPhaseCleaning {
+			allErrs = append(allErrs, field.Forbidden(
+				field.NewPath("status").Child("agentInfo"),
+				"Cannot set agentInfo during the current phase",
+			))
+		}
+
+		ip := net.ParseIP(r.Status.AgentInfo.IP)
+		if ip == nil {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("agentInfo").Child("ip"), r.Status.AgentInfo.IP, "invalid agent ip"))
+		}
 	}
 
 	// when not deleting

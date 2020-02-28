@@ -24,6 +24,9 @@ import (
 
 var (
 	BareMetalEndpointFinalizer = "bme." + FinalizerPrefix
+
+	BareMetalEndpointInstanceLabel = GroupVersion.Group + "/instance"
+	BareMetalEndpointNICLabel      = GroupVersion.Group + "/nic"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!

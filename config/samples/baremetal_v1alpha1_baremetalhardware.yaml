@@ -8,3 +8,8 @@ spec:
   nics:
     - name: eth0
       primary: true
+      networkRef:
+        name: ""
+        kind: ""
+        group: ""
+

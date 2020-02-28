@@ -210,24 +210,15 @@ func (s *server) ready(c *gin.Context) {
 		return
 	}
 
-	bmi := &baremetalv1alpha1.BareMetalInstance{}
-
-	var existingRef *metav1.OwnerReference
-	for _, ref := range bmh.OwnerReferences {
-		if ref.APIVersion == bmi.APIVersion && ref.Kind == bmi.Kind {
-			existingRef = &ref
-			break
-		}
-	}
-
-	if existingRef == nil {
-		// No instance found
+	// hardware has no instance set
+	if bmh.Status.InstanceRef == nil {
 		c.Status(http.StatusNotFound)
 		c.Abort()
 		return
 	}
 
-	if err = s.Client.Get(context.Background(), types.NamespacedName{Namespace: bmh.Namespace, Name: existingRef.Name}, bmi); err != nil {
+	bmi := &baremetalv1alpha1.BareMetalInstance{}
+	if err = s.Client.Get(context.Background(), types.NamespacedName{Namespace: bmh.Status.InstanceRef.Namespace, Name: bmh.Status.InstanceRef.Name}, bmi); err != nil {
 		if apierrors.IsNotFound(err) {
 			c.Status(http.StatusNotFound)
 			c.Abort()
@@ -244,6 +235,13 @@ func (s *server) ready(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+
+	// hardware instance doesn't match found instance for some reason
+	if bmi.UID != bmh.Status.InstanceRef.UID {
+		c.Status(http.StatusNotFound)
 		c.Abort()
 		return
 	}
