@@ -246,7 +246,6 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 					return ctrl.Result{}, nil
 				}
 
-				// TODO: call reboot
 				r.Recorder.Eventf(bmi, corev1.EventTypeNormal, "AgentFinished", "Agent has finished cleaning")
 
 				// we are done cleaning so set instanceRef to nil
@@ -470,6 +469,8 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 		// once we are done imaging set phase to running
 		if imagedCond.Status == conditionv1.ConditionStatusTrue {
+			// TODO: call reboot
+
 			bmi.Status.Phase = baremetalv1alpha1.BareMetalInstanceStatusPhaseRunning
 			bmi.Status.AgentInfo = nil
 			err = r.Status().Update(ctx, bmi)
@@ -622,7 +623,6 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 					return ctrl.Result{}, nil
 				}
 
-				// TODO: call reboot
 				r.Recorder.Eventf(bmi, corev1.EventTypeNormal, "AgentFinished", "Agent has finished imaging")
 				r.Recorder.Eventf(bmi, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceImagedEventReason, "Imaged the instance onto BareMetalHardware %s", bmh.Name)
 				r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceImagedEventReason, "Imaged the BareMetalInstance %s onto the hardware", bmi.Name)

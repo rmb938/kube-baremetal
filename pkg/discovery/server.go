@@ -134,11 +134,56 @@ func (s *server) ipxeBoot(c *gin.Context) {
 		return
 	}
 
-	// TODO: check if instance exists with systemUUID
-	//  if it does check if need to image or boot into os
-	//    if boot into os send ipxe boot into os
-	//    else send ipxe to boot into linuxkit
-	//  else send ipxe to boot into linuxkit
+	hardwareList := &baremetalv1alpha1.BareMetalHardwareList{}
+	err := s.Client.List(context.Background(), hardwareList, client.MatchingFields{"spec.systemUUID": string(systemUUID)})
+	if err != nil {
+		if apiError, ok := err.(apierrors.APIStatus); ok {
+			if apiError.Status().Code == 0 {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(int(apiError.Status().Code), apiError.Status())
+			}
+			c.Abort()
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+
+	// a single hardware exists with the uuid
+	if len(hardwareList.Items) == 1 {
+		bmh := hardwareList.Items[0]
+		if bmh.Status.InstanceRef != nil {
+			bmi := &baremetalv1alpha1.BareMetalInstance{}
+			err := s.Client.Get(context.Background(), types.NamespacedName{Namespace: bmh.Status.InstanceRef.Namespace, Name: bmh.Status.InstanceRef.Name}, bmi)
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					bmi = nil
+				} else {
+					if apiError, ok := err.(apierrors.APIStatus); ok {
+						if apiError.Status().Code == 0 {
+							c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+						} else {
+							c.JSON(int(apiError.Status().Code), apiError.Status())
+						}
+						c.Abort()
+						return
+					}
+					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+					c.Abort()
+					return
+				}
+			}
+
+			if bmi != nil && bmi.UID == bmh.Status.InstanceRef.UID {
+				if bmi.Status.Phase == baremetalv1alpha1.BareMetalInstanceStatusPhaseRunning {
+					c.String(http.StatusOK, "#!ipxe\necho Booting into the OS\nsleep 10\nexit 0")
+					return
+				}
+			}
+		}
+	}
 
 	cmdLineBytes, err := ioutil.ReadFile("/discovery_files/linuxkit-agent-cmdline")
 	if err != nil {
@@ -154,7 +199,7 @@ func (s *server) ipxeBoot(c *gin.Context) {
 
 	s.logger.Info("booting into agent", "cmdline", cmdLine)
 
-	c.String(http.StatusOK, "#!ipxe\necho Booting into agent\ninitrd files/linuxkit-agent-initrd.img\nchain files/linuxkit-agent-kernel %s", cmdLine)
+	c.String(http.StatusOK, "#!ipxe\necho Booting into the agent\nsleep 10\ninitrd files/linuxkit-agent-initrd.img\nchain files/linuxkit-agent-kernel %s", cmdLine)
 }
 
 func (s *server) heartbeat(c *gin.Context) {
