@@ -126,6 +126,9 @@ const (
 
 	BareMetalInstanceNoAgentEventReason string = "InstanceNoAgent"
 
+	BareMetalInstanceImagingEventReason string = "InstanceImaging"
+	BareMetalInstanceImagedEventReason  string = "InstanceImaged"
+
 	BareMetalInstanceNotCleanedEventReason string = "InstanceNotCleaned"
 	BareMetalInstanceCleaningEventReason   string = "InstanceCleaning"
 	BareMetalInstanceCleanedEventReason    string = "InstanceCleaned"

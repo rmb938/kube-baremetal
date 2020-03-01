@@ -256,6 +256,7 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				if err != nil {
 					return ctrl.Result{}, err
 				}
+				r.Recorder.Eventf(bmi, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceCleanedEventReason, "Cleaned the instance off of BareMetalHardware %s", bmh.Name)
 				r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareCleanedEventReason, "Cleaned the BareMetalInstance %s off of the hardware", bmi.Name)
 				return ctrl.Result{}, nil
 			}
@@ -549,6 +550,9 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 		// agent is not doing anything
 		if agentStatus == nil {
+			r.Recorder.Eventf(bmi, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceImagingEventReason, "Imaging the instance onto BareMetalHardware %s", bmh.Name)
+			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceImagingEventReason, "Imaging the BareMetalInstance %s onto the hardware", bmi.Name)
+
 			imageRequest := action.ImageRequest{
 				ImageURL:            "https://mirrors.rmb938.me/centos/cloud-images/CentOS-7-x86_64-GenericCloud-1907.raw.gz",
 				DiskPath:            fmt.Sprintf("/dev/%s", bmh.Spec.ImageDrive),
@@ -620,6 +624,8 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 				// TODO: call reboot
 				r.Recorder.Eventf(bmi, corev1.EventTypeNormal, "AgentFinished", "Agent has finished imaging")
+				r.Recorder.Eventf(bmi, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceImagedEventReason, "Imaged the instance onto BareMetalHardware %s", bmh.Name)
+				r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceImagedEventReason, "Imaged the BareMetalInstance %s onto the hardware", bmi.Name)
 
 				// we are done imaging so set image cond to true
 				nowTime := metav1.NewTime(r.Clock.Now())
