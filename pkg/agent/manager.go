@@ -13,10 +13,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
+	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
 	"github.com/rmb938/kube-baremetal/pkg/agent/action"
 )
 
 type Manager struct {
+	hardware *baremetalv1alpha1.BareMetalDiscoverySpec
+
 	discoveryURL string
 	systemUUID   types.UID
 
@@ -26,8 +29,10 @@ type Manager struct {
 	currentAction action.Action
 }
 
-func NewManager(discoveryURL string, systemUUID types.UID) *Manager {
+func NewManager(hardware *baremetalv1alpha1.BareMetalDiscoverySpec, discoveryURL string, systemUUID types.UID) *Manager {
 	return &Manager{
+		hardware: hardware,
+
 		discoveryURL: discoveryURL,
 		systemUUID:   systemUUID,
 
@@ -87,7 +92,7 @@ func (m *Manager) DoAction(action action.Action) bool {
 
 	if m.currentAction == nil {
 		m.currentAction = action
-		go m.currentAction.Do()
+		go m.currentAction.Do(m.hardware)
 		return true
 	}
 

@@ -86,6 +86,7 @@ func (s *server) Run(stop <-chan struct{}) error {
 	})
 
 	r.POST("/image", s.image)
+	r.POST("/clean", s.clean)
 	r.GET("/status", s.status)
 
 	srv := &http.Server{
@@ -99,9 +100,14 @@ func (s *server) Run(stop <-chan struct{}) error {
 	}
 	defer httpListener.Close()
 
-	err = s.Manager.SendReady()
-	if err != nil {
-		return fmt.Errorf("error sending ready action: %v", err)
+	for {
+		err = s.Manager.SendReady()
+		if err != nil {
+			s.logger.Error(err, "error sending ready action, trying again in 30 seconds")
+			time.Sleep(30 * time.Second)
+		} else {
+			break
+		}
 	}
 
 	go func() {
@@ -142,6 +148,20 @@ func (s *server) image(c *gin.Context) {
 	)
 
 	doingAction := s.Manager.DoAction(imageAction)
+
+	if doingAction == false {
+		c.JSON(http.StatusConflict, gin.H{"error": "cannot run multiple actions"})
+		c.Abort()
+		return
+	}
+
+	c.Status(http.StatusAccepted)
+}
+
+func (s *server) clean(c *gin.Context) {
+	cleanAction := action.NewCleanAction()
+
+	doingAction := s.Manager.DoAction(cleanAction)
 
 	if doingAction == false {
 		c.JSON(http.StatusConflict, gin.H{"error": "cannot run multiple actions"})

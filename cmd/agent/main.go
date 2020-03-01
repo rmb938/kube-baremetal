@@ -106,7 +106,7 @@ func main() {
 		}, 30*time.Second, signalChan)
 	}()
 
-	manager := agent.NewManager(discoveryURL, hardware.SystemUUID)
+	manager := agent.NewManager(hardware, discoveryURL, hardware.SystemUUID)
 
 	server := agent.NewServer(":10443", manager)
 

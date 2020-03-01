@@ -29,6 +29,9 @@ import (
 	"k8s.io/utils/clock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	baremetalapi "github.com/rmb938/kube-baremetal/api"
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
@@ -234,6 +237,36 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 			}
 
 			r.Recorder.Eventf(bmh, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalHardwareNotReadyEventReason, "Hardware %s status is now HardwareNotReady", bmh.Name)
+			return ctrl.Result{}, nil
+		}
+	}
+
+	if bmh.Status.InstanceRef != nil {
+		bmi := &baremetalv1alpha1.BareMetalInstance{}
+		err := r.Get(ctx, types.NamespacedName{Namespace: bmh.Status.InstanceRef.Namespace, Name: bmh.Status.InstanceRef.Name}, bmi)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				// bmi wasn't found so set instance ref to nil
+				bmh.Status.InstanceRef = nil
+				err := r.Status().Update(ctx, bmh)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{}, nil
+			} else {
+				return ctrl.Result{}, err
+			}
+		}
+
+		if bmi.UID != bmh.Status.InstanceRef.UID {
+			// bmi was found but doesn't match UID
+			// this means it's not our instance
+			// so lets remove the instance ref
+			bmh.Status.InstanceRef = nil
+			err := r.Status().Update(ctx, bmh)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 			return ctrl.Result{}, nil
 		}
 	}
@@ -505,5 +538,20 @@ func (r *BareMetalHardwareReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&baremetalv1alpha1.BareMetalHardware{}).
+		// This will cause BMI changes to cause a BMH reconcile if instance ref is set
+		Watches(&source.Kind{Type: &baremetalv1alpha1.BareMetalInstance{}}, &handler.EnqueueRequestsFromMapFunc{ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
+			bmi := a.Object.(*baremetalv1alpha1.BareMetalInstance)
+			var req []reconcile.Request
+
+			// TODO: this should be changed once we have CBMH
+			if len(bmi.Status.HardwareName) > 0 {
+				req = append(req, reconcile.Request{NamespacedName: types.NamespacedName{
+					Namespace: bmi.Namespace,
+					Name:      bmi.Status.HardwareName,
+				}})
+			}
+
+			return req
+		})}).
 		Complete(r)
 }

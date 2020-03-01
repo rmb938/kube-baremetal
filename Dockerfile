@@ -38,7 +38,6 @@ WORKDIR /
 COPY --from=alpine /out /
 
 COPY --from=builder /workspace/agent .
-USER 1000:1000
 
 ENTRYPOINT []
 CMD []

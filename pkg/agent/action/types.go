@@ -1,5 +1,7 @@
 package action
 
+import baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
+
 type Type string
 
 const (
@@ -14,6 +16,6 @@ type Status struct {
 }
 
 type Action interface {
-	Do()
+	Do(hardware *baremetalv1alpha1.BareMetalDiscoverySpec)
 	Status() (*Status, error)
 }

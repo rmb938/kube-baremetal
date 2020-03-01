@@ -94,6 +94,13 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{}, nil
 		}
 
+		// cleanedCond had an error so don't do anything else
+		if cleanedCond.Status == conditionv1.ConditionStatusError {
+			// TODO: when we get stuck here the user needs to know to manually clean and force delete the object
+			//  I'm not sure how else to do this as we shouldn't keep trying over and over
+			return ctrl.Result{}, nil
+		}
+
 		// phase is not cleaning but we should be cleaning
 		if bmi.Status.Phase != baremetalv1alpha1.BareMetalInstanceStatusPhaseCleaning {
 			bmi.Status.Phase = baremetalv1alpha1.BareMetalInstanceStatusPhaseCleaning
@@ -162,20 +169,97 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{}, nil
 		}
 
-		r.Recorder.Eventf(bmi, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceCleaningEventReason, "Cleaning the instance off of BareMetalHardware %s", bmh.Name)
-		r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareCleaningEventReason, "Cleaning the BareMetalInstance %s off of the hardware", bmi.Name)
+		// TODO: bmc (re)boot instance
 
-		// TODO: do cleaning stuffs
+		// wait for agent info to be set
+		if bmi.Status.AgentInfo == nil {
+			r.Recorder.Eventf(bmi, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalInstanceNoAgentEventReason, "Agent has not reported in yet")
 
-		// we are done cleaning so set instanceRef to nil
-		// this will cause a reconcile due to the old object not being nil
-		bmh.Status.InstanceRef = nil
-		err = r.Status().Update(ctx, bmh)
+			// I know we will automatically reconcile when the agent reports in, but the events will eventually disappear
+			return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+		}
+
+		// check agent status
+		agentStatus, err := r.getAgentStatus(bmi.Status.AgentInfo.IP)
 		if err != nil {
+			r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Could not check agent status: %v", err)
 			return ctrl.Result{}, err
 		}
-		r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareCleanedEventReason, "Cleaned the BareMetalInstance %s off of the hardware", bmi.Name)
-		return ctrl.Result{}, nil
+
+		if agentStatus == nil {
+			r.Recorder.Eventf(bmi, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceCleaningEventReason, "Cleaning the instance off of BareMetalHardware %s", bmh.Name)
+			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareCleaningEventReason, "Cleaning the BareMetalInstance %s off of the hardware", bmi.Name)
+
+			// agent is not doing anything
+			cleanResp, err := http.Post("http://"+bmi.Status.AgentInfo.IP+":10443/clean", "application/json", nil)
+			if err != nil {
+				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Could not tell agent to clean: %v", err)
+				return ctrl.Result{}, err
+			}
+			defer cleanResp.Body.Close()
+			cleanBody, err := ioutil.ReadAll(cleanResp.Body)
+			if err != nil {
+				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Error reading agent clean body: %v", err)
+				return ctrl.Result{}, err
+			}
+
+			if cleanResp.StatusCode == http.StatusConflict {
+				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentWrongAction", "Agent is already performing an action")
+				return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+			} else if cleanResp.StatusCode == http.StatusAccepted {
+				r.Recorder.Eventf(bmi, corev1.EventTypeNormal, "AgentWorking", "Agent cleaning started")
+				return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+			} else {
+				// some other error happened
+				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Agent clean request returned an error: %v", string(cleanBody))
+				return ctrl.Result{Requeue: true}, nil
+			}
+		} else {
+			// agent is doing something
+			if agentStatus.Type != action.CleaningActionType {
+				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentWrongAction", "Agent is performing a different action")
+				return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+			}
+
+			if agentStatus.Done == false {
+				r.Recorder.Eventf(bmi, corev1.EventTypeNormal, "AgentWorking", "Agent is still cleaning")
+				return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+			} else {
+				// agent errored so set the condition
+				if len(agentStatus.Error) > 0 {
+					r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentFailed", "Agent cleaning failed: %v", agentStatus.Error)
+					nowTime := metav1.NewTime(r.Clock.Now())
+					err = bmi.Status.SetCondition(&conditionv1.StatusCondition{
+						Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeInstanceCleaned,
+						Status:             conditionv1.ConditionStatusError,
+						Reason:             baremetalv1alpha1.BareMetalInstanceCleaningFailedConditionReason,
+						Message:            agentStatus.Error,
+						LastTransitionTime: &nowTime,
+					})
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					err = r.Status().Update(ctx, bmi)
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					return ctrl.Result{}, nil
+				}
+
+				// TODO: call reboot
+				r.Recorder.Eventf(bmi, corev1.EventTypeNormal, "AgentFinished", "Agent has finished cleaning")
+
+				// we are done cleaning so set instanceRef to nil
+				// this will cause a reconcile due to the old object not being nil
+				bmh.Status.InstanceRef = nil
+				err = r.Status().Update(ctx, bmh)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareCleanedEventReason, "Cleaned the BareMetalInstance %s off of the hardware", bmi.Name)
+				return ctrl.Result{}, nil
+			}
+		}
 	}
 
 	// if bmi is not phase provisioning we don't care about it
@@ -396,6 +480,8 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 		// imagedCond had an error so don't do anything else
 		if imagedCond.Status == conditionv1.ConditionStatusError {
+			// TODO: when we get stuck here the user needs to know to manually force delete the object
+			//  I'm not sure how else to do this as we shouldn't keep trying over and over
 			return ctrl.Result{}, nil
 		}
 
@@ -410,15 +496,9 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 
 		// check agent status
-		statusResp, err := http.Get("http://" + bmi.Status.AgentInfo.IP + ":10443/status")
+		agentStatus, err := r.getAgentStatus(bmi.Status.AgentInfo.IP)
 		if err != nil {
 			r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Could not check agent status: %v", err)
-			return ctrl.Result{}, err
-		}
-		defer statusResp.Body.Close()
-		statusBody, err := ioutil.ReadAll(statusResp.Body)
-		if err != nil {
-			r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Error reading agent status body: %v", err)
 			return ctrl.Result{}, err
 		}
 
@@ -468,7 +548,7 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		userdata := `#cloud-config\n{}`
 
 		// agent is not doing anything
-		if statusResp.StatusCode == http.StatusNoContent {
+		if agentStatus == nil {
 			imageRequest := action.ImageRequest{
 				ImageURL:            "https://mirrors.rmb938.me/centos/cloud-images/CentOS-7-x86_64-GenericCloud-1907.raw.gz",
 				DiskPath:            fmt.Sprintf("/dev/%s", bmh.Spec.ImageDrive),
@@ -505,36 +585,27 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Agent image request returned an error: %v", string(imageBody))
 				return ctrl.Result{Requeue: true}, nil
 			}
-		} else if statusResp.StatusCode == http.StatusOK {
+		} else {
 			// agent is doing something
-			actionStatus := &action.Status{}
-			err = json.Unmarshal(statusBody, actionStatus)
-			if err != nil {
-				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Error unmarshalling agent status: %v", err)
-				return ctrl.Result{}, err
-			}
 
-			if actionStatus.Type != action.ImagingActionType {
+			if agentStatus.Type != action.ImagingActionType {
 				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentWrongAction", "Agent is performing a different action")
 				return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
 			}
 
-			if actionStatus.Done == false {
+			if agentStatus.Done == false {
 				r.Recorder.Eventf(bmi, corev1.EventTypeNormal, "AgentWorking", "Agent is still imaging")
 				return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
-			}
-
-			if actionStatus.Done == true {
-
+			} else {
 				// agent errored so set the condition
-				if len(actionStatus.Error) > 0 {
-					r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentFailed", "Agent imaging failed: %v", actionStatus.Error)
+				if len(agentStatus.Error) > 0 {
+					r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentFailed", "Agent imaging failed: %v", agentStatus.Error)
 					nowTime := metav1.NewTime(r.Clock.Now())
 					err = bmi.Status.SetCondition(&conditionv1.StatusCondition{
 						Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeInstanceImaged,
 						Status:             conditionv1.ConditionStatusError,
 						Reason:             baremetalv1alpha1.BareMetalInstanceImagingFailedConditionReason,
-						Message:            actionStatus.Error,
+						Message:            agentStatus.Error,
 						LastTransitionTime: &nowTime,
 					})
 					if err != nil {
@@ -566,14 +637,37 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				}
 				return ctrl.Result{}, nil
 			}
-		} else {
-			// some error happened
-			r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Agent status request returned an error: %v", string(statusBody))
-			return ctrl.Result{Requeue: true}, nil
 		}
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *Provisioner) getAgentStatus(ip string) (*action.Status, error) {
+	statusResp, err := http.Get("http://" + ip + ":10443/status")
+	if err != nil {
+		return nil, fmt.Errorf("error while requesting agent status: %v", err)
+	}
+	defer statusResp.Body.Close()
+	statusBody, err := ioutil.ReadAll(statusResp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error while reading agent status body: %v", err)
+	}
+
+	if statusResp.StatusCode == http.StatusNoContent {
+		// there is no status which means the agent isn't doing anything
+		return nil, nil
+	} else if statusResp.StatusCode == http.StatusOK {
+		// there is a status so the agent is doing something
+		actionStatus := &action.Status{}
+		err = json.Unmarshal(statusBody, actionStatus)
+		if err != nil {
+			return nil, fmt.Errorf("error while unmarshalling agent status: %v", err)
+		}
+		return actionStatus, nil
+	} else {
+		return nil, fmt.Errorf("agent status request returned an error: %v", string(statusBody))
+	}
 }
 
 func (r *Provisioner) SetupWithManager(mgr ctrl.Manager) error {

@@ -112,7 +112,8 @@ const (
 	BareMetalHardwareConditionTypeInstanceCleaned   conditionv1.ConditionType = "InstanceCleaned"
 
 	// Condition Reasons
-	BareMetalInstanceImagingFailedConditionReason string = "ImagingFailed"
+	BareMetalInstanceImagingFailedConditionReason  string = "ImagingFailed"
+	BareMetalInstanceCleaningFailedConditionReason string = "CleaningFailed"
 
 	// Event Reasons
 	BareMetalInstanceScheduleEventReason   string = "InstanceScheduled"

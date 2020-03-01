@@ -15,6 +15,8 @@ import (
 	"github.com/diskfs/go-diskfs/partition/mbr"
 	"github.com/go-logr/logr"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
+
+	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
 )
 
 type ImageRequest struct {
@@ -57,7 +59,7 @@ func NewImageAction(imageURL, diskPath, metadataContents, networkdataContents, u
 	return action
 }
 
-func (i *imageAction) Do() {
+func (i *imageAction) Do(hardware *baremetalv1alpha1.BareMetalDiscoverySpec) {
 	err := i.do()
 	if err != nil {
 		i.status.Error = err.Error()
@@ -125,6 +127,7 @@ func (i *imageAction) do() error {
 		i.logger.Error(err, "error opening disk", "disk", i.DiskPath)
 		return fmt.Errorf("error opening disk %s: %v", i.DiskPath, err)
 	}
+	defer destDisk.File.Close()
 
 	i.logger.Info("Reading disk partitions", "disk", i.DiskPath)
 	rawTable, err := destDisk.GetPartitionTable()
