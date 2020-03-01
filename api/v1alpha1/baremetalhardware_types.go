@@ -133,6 +133,7 @@ type BareMetalHardwareStatus struct {
 // +kubebuilder:printcolumn:name="CPU Model",type=string,JSONPath=`.status.hardware.cpu.modelName`
 // +kubebuilder:printcolumn:name="CPU Count",type=string,JSONPath=`.status.hardware.cpu.cpus`
 // +kubebuilder:printcolumn:name="Ram",type=string,JSONPath=`.status.hardware.ram`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // BareMetalHardware is the Schema for the baremetalhardwares API
 type BareMetalHardware struct {

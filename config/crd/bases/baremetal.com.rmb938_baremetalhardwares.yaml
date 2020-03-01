@@ -18,6 +18,9 @@ spec:
   - JSONPath: .status.hardware.ram
     name: Ram
     type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: baremetal.com.rmb938
   names:
     kind: BareMetalHardware
@@ -169,6 +172,7 @@ spec:
                     enum:
                     - "True"
                     - "False"
+                    - Error
                     - Unknown
                     type: string
                   type:

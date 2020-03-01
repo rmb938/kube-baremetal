@@ -1,7 +1,14 @@
 package baremetalinstance
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -20,6 +27,7 @@ import (
 
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
 	conditionv1 "github.com/rmb938/kube-baremetal/apis/condition/v1"
+	"github.com/rmb938/kube-baremetal/pkg/agent/action"
 )
 
 type Provisioner struct {
@@ -386,6 +394,11 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{}, nil
 		}
 
+		// imagedCond had an error so don't do anything else
+		if imagedCond.Status == conditionv1.ConditionStatusError {
+			return ctrl.Result{}, nil
+		}
+
 		// TODO: bmc (re)boot instance
 
 		// wait for agent info to be set
@@ -396,23 +409,168 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
 		}
 
-		// TODO: imaging stuffs
+		// check agent status
+		statusResp, err := http.Get("http://" + bmi.Status.AgentInfo.IP + ":10443/status")
+		if err != nil {
+			r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Could not check agent status: %v", err)
+			return ctrl.Result{}, err
+		}
+		defer statusResp.Body.Close()
+		statusBody, err := ioutil.ReadAll(statusResp.Body)
+		if err != nil {
+			r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Error reading agent status body: %v", err)
+			return ctrl.Result{}, err
+		}
 
-		// we are done imaging so set image cond to true
-		nowTime := metav1.NewTime(r.Clock.Now())
-		err := bmi.Status.SetCondition(&conditionv1.StatusCondition{
-			Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeInstanceImaged,
-			Status:             conditionv1.ConditionStatusTrue,
-			LastTransitionTime: &nowTime,
-		})
-		if err != nil {
-			return ctrl.Result{}, err
+		metadata := fmt.Sprintf(`
+{
+  "uuid": "%s",
+  "public_keys": {
+    "rmb938": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDGh42fHGzThG+7pA8O6DgSXQYeMHsHMkGVJdZNLvKc43lL2+Ovv8q+fYr2h1TQkHvGb4loRPLfGU6QgF5aJ8gRzwsCyDB58xeakF7otrShhZkLsjws4wKRJuv6svP5zVADSDz4TEEHXNONvoF/KU+PUY4NbS40G6qjlcfSKyp/aHDxtfNY/Q4erh80hYRJjdopA6DHx0UIDR4rSN9mymrVbvoRRnNhHynaUrBPhJ+C7ty7lzg6PhiHr6CK0iCFZHaDobXa9aa7ML1AliXzyB1tOIHU/4mJPXZzvFhmHfM4L+mau32BrxU/W8TwibfenFnaRY1E6ylRdmFDK0U2MdQTDCZDb2F+oGmbcvp8g3BixHL8p7L7yh+D7PuhPsoXKY8W586MZmNlp4MOpPQ8dFd0cCt7X9rc4nmHYtpwRZKyS6+zQRJj9tjAj4/6MzXPrH+AUKdL0pyQkeqUU+32y/LnBskhWjDoq8tg4JsoJtDe2t6XR9KQOWVn/EdNwD+Y9P0="
+  },
+  "hostname": "%s"
+}
+`, bmi.UID, bmi.Name)
+		networkdata := `
+{
+  "links": [
+    {
+      "id": "eth0",
+      "ethernet_mac_address": "d0:50:99:d3:47:d1",
+      "type": "phy"
+    },
+    {
+      "id": "eth1",
+      "ethernet_mac_address": "d0:50:99:d3:47:d2",
+      "type": "phy"
+    },
+    {
+      "id": "bond0",
+      "type": "bond",
+      "bond_mode": "active-backup",
+      "bond_miimon": 100,
+      "bond_links": ["eth0", "eth1"]
+    }
+  ],
+  "networks": [
+    {
+      "link": "bond0",
+      "type": "ipv4",
+      "ip_address": "192.168.23.160",
+      "netmask": "255.255.255.0",
+      "gateway": "192.168.23.254",
+      "dns_nameservers": ["192.168.23.254"],
+      "dns_search": ["rmb938.me"]
+    }
+  ]
+}
+`
+		userdata := `#cloud-config\n{}`
+
+		// agent is not doing anything
+		if statusResp.StatusCode == http.StatusNoContent {
+			imageRequest := action.ImageRequest{
+				ImageURL:            "https://mirrors.rmb938.me/centos/cloud-images/CentOS-7-x86_64-GenericCloud-1907.raw.gz",
+				DiskPath:            fmt.Sprintf("/dev/%s", bmh.Spec.ImageDrive),
+				MetadataContents:    base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(metadata))),
+				NetworkDataContents: base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(networkdata))),
+				UserDataContents:    base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(userdata))),
+			}
+			imageRequestBytes, err := json.Marshal(imageRequest)
+			if err != nil {
+				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Error marshalling agent image request: %v", err)
+				return ctrl.Result{}, err
+			}
+
+			imageResp, err := http.Post("http://"+bmi.Status.AgentInfo.IP+":10443/image", "application/json", bytes.NewBuffer(imageRequestBytes))
+			if err != nil {
+				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Could not tell agent to image: %v", err)
+				return ctrl.Result{}, err
+			}
+			defer imageResp.Body.Close()
+			imageBody, err := ioutil.ReadAll(imageResp.Body)
+			if err != nil {
+				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Error reading agent image body: %v", err)
+				return ctrl.Result{}, err
+			}
+
+			if imageResp.StatusCode == http.StatusConflict {
+				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentWrongAction", "Agent is already performing an action")
+				return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+			} else if imageResp.StatusCode == http.StatusAccepted {
+				r.Recorder.Eventf(bmi, corev1.EventTypeNormal, "AgentWorking", "Agent imaging started")
+				return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+			} else {
+				// some other error happened
+				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Agent image request returned an error: %v", string(imageBody))
+				return ctrl.Result{Requeue: true}, nil
+			}
+		} else if statusResp.StatusCode == http.StatusOK {
+			// agent is doing something
+			actionStatus := &action.Status{}
+			err = json.Unmarshal(statusBody, actionStatus)
+			if err != nil {
+				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Error unmarshalling agent status: %v", err)
+				return ctrl.Result{}, err
+			}
+
+			if actionStatus.Type != action.ImagingActionType {
+				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentWrongAction", "Agent is performing a different action")
+				return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+			}
+
+			if actionStatus.Done == false {
+				r.Recorder.Eventf(bmi, corev1.EventTypeNormal, "AgentWorking", "Agent is still imaging")
+				return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+			}
+
+			if actionStatus.Done == true {
+
+				// agent errored so set the condition
+				if len(actionStatus.Error) > 0 {
+					r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentFailed", "Agent imaging failed: %v", actionStatus.Error)
+					nowTime := metav1.NewTime(r.Clock.Now())
+					err = bmi.Status.SetCondition(&conditionv1.StatusCondition{
+						Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeInstanceImaged,
+						Status:             conditionv1.ConditionStatusError,
+						Reason:             baremetalv1alpha1.BareMetalInstanceImagingFailedConditionReason,
+						Message:            actionStatus.Error,
+						LastTransitionTime: &nowTime,
+					})
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					err = r.Status().Update(ctx, bmi)
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					return ctrl.Result{}, nil
+				}
+
+				// TODO: call reboot
+				r.Recorder.Eventf(bmi, corev1.EventTypeNormal, "AgentFinished", "Agent has finished imaging")
+
+				// we are done imaging so set image cond to true
+				nowTime := metav1.NewTime(r.Clock.Now())
+				err = bmi.Status.SetCondition(&conditionv1.StatusCondition{
+					Type:               baremetalv1alpha1.BareMetalHardwareConditionTypeInstanceImaged,
+					Status:             conditionv1.ConditionStatusTrue,
+					LastTransitionTime: &nowTime,
+				})
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				err = r.Status().Update(ctx, bmi)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{}, nil
+			}
+		} else {
+			// some error happened
+			r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Agent status request returned an error: %v", string(statusBody))
+			return ctrl.Result{Requeue: true}, nil
 		}
-		err = r.Status().Update(ctx, bmi)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
 	}
 
 	return ctrl.Result{}, nil

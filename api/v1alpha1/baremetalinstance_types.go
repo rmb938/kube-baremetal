@@ -81,6 +81,7 @@ type BareMetalInstanceStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="HARDWARE",type=string,JSONPath=`.status.hardwareName`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // BareMetalInstance is the Schema for the baremetalinstances API
 type BareMetalInstance struct {
@@ -111,6 +112,7 @@ const (
 	BareMetalHardwareConditionTypeInstanceCleaned   conditionv1.ConditionType = "InstanceCleaned"
 
 	// Condition Reasons
+	BareMetalInstanceImagingFailedConditionReason string = "ImagingFailed"
 
 	// Event Reasons
 	BareMetalInstanceScheduleEventReason   string = "InstanceScheduled"

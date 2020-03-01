@@ -120,6 +120,7 @@ type BareMetalDiscoveryStatus struct {
 // +kubebuilder:printcolumn:name="CPU Model",type=string,JSONPath=`.spec.hardware.cpu.modelName`
 // +kubebuilder:printcolumn:name="CPU Count",type=string,JSONPath=`.spec.hardware.cpu.cpus`
 // +kubebuilder:printcolumn:name="Ram",type=string,JSONPath=`.spec.hardware.ram`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // BareMetalDiscovery is the Schema for the baremetaldiscoveries API
 type BareMetalDiscovery struct {

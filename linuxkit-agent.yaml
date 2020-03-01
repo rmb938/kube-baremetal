@@ -17,7 +17,12 @@ onboot:
     command: ["/sbin/rngd", "-1"]
   - name: dhcpcd1
     image: linuxkit/dhcpcd:v0.7
-    command: ["/sbin/dhcpcd", "--nobackground", "-f", "/dhcpcd.conf", "-1"]
+    # Only enable DHCP for eth0
+    # This prevents multiple nics on the same network from requesting IPs
+    # If multiple nics on the same network get IPs the 2nd IP doesn't end up working correctly
+    # Multiple nics can be on the same network if they will eventually be bonded
+    # I would like to find a better fix eventually
+    command: ["/sbin/dhcpcd", "--nobackground", "-f", "/dhcpcd.conf", "-1", "eth0"]
 services:
   - name: rngd
     image: linuxkit/rngd:v0.7
@@ -29,12 +34,20 @@ services:
     image: linuxkit/openntpd:v0.7
   - name: dhcpcd
     image: linuxkit/dhcpcd:v0.7
+    command: ["/sbin/dhcpcd", "--nobackground", "-f", "/dhcpcd.conf", "eth0"]
   - name: getty
     image: linuxkit/getty:v0.7
     env:
       - INSECURE=true
+  - name: sshd
+    image: linuxkit/sshd:v0.7
   - name: agent
     image: docker.pkg.github.com/rmb938/kube-baremetal/agent:dev
+files:
+  - path: root/.ssh/authorized_keys
+    source: ~/.ssh/id_rsa.pub
+    mode: "0600"
+    optional: true
 trust:
   org:
     - linuxkit

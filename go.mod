@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
+	github.com/diskfs/go-diskfs v0.0.0-20200223081852-30669c4af6d4
 	github.com/gin-contrib/location v0.0.1
 	github.com/gin-gonic/gin v1.5.0
 	github.com/go-logr/logr v0.1.0

@@ -175,6 +175,12 @@ func (s *server) ready(c *gin.Context) {
 		return
 	}
 
+	if len(input.SystemUUID) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "system uuid must be set"})
+		c.Abort()
+		return
+	}
+
 	var bmh *baremetalv1alpha1.BareMetalHardware
 
 	hardwareList := &baremetalv1alpha1.BareMetalHardwareList{}
@@ -277,16 +283,23 @@ func (s *server) ready(c *gin.Context) {
 
 }
 
-type discoveryInput struct {
-	SystemUUID types.UID                                    `json:"systemUUID"`
-	Hardware   baremetalv1alpha1.BareMetalDiscoveryHardware `json:"hardware"`
-}
-
 func (s *server) discover(c *gin.Context) {
-	input := &discoveryInput{}
+	input := &baremetalv1alpha1.BareMetalDiscoverySpec{}
 
 	if err := c.ShouldBindJSON(input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+
+	if len(input.SystemUUID) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "system uuid must be set"})
+		c.Abort()
+		return
+	}
+
+	if input.Hardware == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "hardware cannot be nil"})
 		c.Abort()
 		return
 	}
@@ -375,7 +388,7 @@ func (s *server) discover(c *gin.Context) {
 		},
 		Spec: baremetalv1alpha1.BareMetalDiscoverySpec{
 			SystemUUID: input.SystemUUID,
-			Hardware:   &input.Hardware,
+			Hardware:   input.Hardware,
 		},
 	}
 

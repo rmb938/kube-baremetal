@@ -91,6 +91,7 @@ type BareMetalEndpointStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="IP",type=string,JSONPath=`.status.address.ip`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // BareMetalEndpoint is the Schema for the baremetalendpoints API
 type BareMetalEndpoint struct {

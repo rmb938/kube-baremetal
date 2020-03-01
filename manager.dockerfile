@@ -20,7 +20,7 @@ COPY webhook/ webhook/
 COPY webhooks/ webhooks/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags '-extldflags "-static"' -o agent cmd/agent/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags '-extldflags "-static"' -o manager main.go
 
 FROM alpine:3.11 as alpine
 
@@ -30,14 +30,14 @@ RUN apk -U add --no-cache --initdb -p /out \
   alpine-baselayout \
   ca-certificates \
   util-linux \
-  sgdisk \
   coreutils
 
 FROM scratch
 WORKDIR /
 COPY --from=alpine /out /
 
-COPY --from=builder /workspace/agent .
+COPY --from=builder /workspace/manager .
+COPY discovery_files /discovery_files
 USER 1000:1000
 
 ENTRYPOINT []

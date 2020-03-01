@@ -6,12 +6,13 @@ import (
 
 type ConditionType string
 
-// +kubebuilder:validation:Enum=True;False;Unknown
+// +kubebuilder:validation:Enum=True;False;Error;Unknown
 type ConditionStatus string
 
 const (
 	ConditionStatusTrue    ConditionStatus = "True"
 	ConditionStatusFalse   ConditionStatus = "False"
+	ConditionStatusError   ConditionStatus = "Error"
 	ConditionStatusUnknown ConditionStatus = "Unknown"
 )
 

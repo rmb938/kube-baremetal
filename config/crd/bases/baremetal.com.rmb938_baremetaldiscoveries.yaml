@@ -18,6 +18,9 @@ spec:
   - JSONPath: .spec.hardware.ram
     name: Ram
     type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: baremetal.com.rmb938
   names:
     kind: BareMetalDiscovery

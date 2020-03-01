@@ -8,8 +8,8 @@ config:
     - /agent
   binds:
     - /dev:/dev
-  rootfsPropagation: shared
+    - /sys:/sys
+    - /etc/resolv.conf:/etc/resolv.conf:ro
   pid: host
-  net: host
   capabilities:
     - all
