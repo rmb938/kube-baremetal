@@ -95,7 +95,7 @@ func (w *BareMetalInstanceWebhook) ValidateCreate(obj runtime.Object) error {
 	}
 
 	return apierrors.NewInvalid(
-		schema.GroupKind{Group: baremetalv1alpha1.GroupVersion.Group, Kind: baremetalv1alpha1.BareMetalDiscoveryKind},
+		schema.GroupKind{Group: baremetalv1alpha1.GroupVersion.Group, Kind: r.Kind},
 		r.Name, allErrs)
 }
 
@@ -178,7 +178,7 @@ func (w *BareMetalInstanceWebhook) ValidateUpdate(obj runtime.Object, old runtim
 	}
 
 	return apierrors.NewInvalid(
-		schema.GroupKind{Group: baremetalv1alpha1.GroupVersion.Group, Kind: baremetalv1alpha1.BareMetalDiscoveryKind},
+		schema.GroupKind{Group: baremetalv1alpha1.GroupVersion.Group, Kind: r.Kind},
 		r.Name, allErrs)
 }
 

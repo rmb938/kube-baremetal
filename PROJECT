@@ -13,4 +13,7 @@ resources:
 - group: baremetal
   kind: BareMetalEndpoint
   version: v1alpha1
+- group: baremetal
+  kind: BareMetalNetwork
+  version: v1alpha1
 version: "2"

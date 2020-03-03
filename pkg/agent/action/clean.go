@@ -54,10 +54,10 @@ func (c *cleanAction) do() error {
 
 	c.logger.Info("Starting clean action")
 	for _, storage := range c.hardware.Hardware.Storage {
-		go func() {
+		go func(storage baremetalv1alpha1.BareMetalDiscoveryHardwareStorage) {
 			defer waitGroup.Done()
 			errorChan <- c.cleanDrive(storage)
-		}()
+		}(storage)
 	}
 
 	var err error

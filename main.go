@@ -31,6 +31,7 @@ import (
 
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
 	"github.com/rmb938/kube-baremetal/controllers"
+	"github.com/rmb938/kube-baremetal/controllers/baremetalendpoint"
 	"github.com/rmb938/kube-baremetal/controllers/baremetalinstance"
 	"github.com/rmb938/kube-baremetal/pkg/discovery"
 	"github.com/rmb938/kube-baremetal/webhooks"
@@ -123,7 +124,7 @@ func main() {
 		os.Exit(1)
 	}
 	(&webhooks.BareMetalInstanceWebhook{}).SetupWebhookWithManager(mgr)
-	if err = (&controllers.BareMetalEndpointReconciler{
+	if err = (&baremetalendpoint.Controller{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("BareMetalEndpoint"),
 		Scheme: mgr.GetScheme(),
@@ -131,7 +132,26 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "BareMetalEndpoint")
 		os.Exit(1)
 	}
+	if err = (&baremetalendpoint.Network{
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("BareMetalEndpointNetwork"),
+		Scheme:   mgr.GetScheme(),
+		Clock:    clock.RealClock{},
+		Recorder: mgr.GetEventRecorderFor("BareMetalEndpointNetwork"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "BareMetalEndpointNetwork")
+		os.Exit(1)
+	}
 	(&webhooks.BareMetalEndpointWebhook{}).SetupWebhookWithManager(mgr)
+	if err = (&controllers.BareMetalNetworkReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("BareMetalNetwork"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "BareMetalNetwork")
+		os.Exit(1)
+	}
+	(&webhooks.BareMetalNetworkWebhook{}).SetupWebhookWithManager(mgr)
 	// +kubebuilder:scaffold:builder
 
 	signalHandler := ctrl.SetupSignalHandler()

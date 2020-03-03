@@ -9,7 +9,7 @@ spec:
     - name: eth0
       primary: true
       networkRef:
-        name: ""
-        kind: ""
-        group: ""
+        name: baremetalnetwork-sample
+        kind: BareMetalNetwork
+        group: baremetal.com.rmb938
 

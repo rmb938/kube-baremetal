@@ -23,7 +23,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	baremetalapi "github.com/rmb938/kube-baremetal/api"
 	baremetalv1alpha1 "github.com/rmb938/kube-baremetal/api/v1alpha1"
 )
 
@@ -34,50 +33,17 @@ type BareMetalEndpointReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+// THIS IS JUST A DUMMY FILE REAL CONTROLLER IMPLEMENTATION IS IN "github.com/rmb938/kube-baremetal/controllers/baremetalinstance"
+
 // +kubebuilder:rbac:groups=baremetal.com.rmb938,resources=baremetalendpoints,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=baremetal.com.rmb938,resources=baremetalendpoints/status,verbs=get;update;patch
 
 func (r *BareMetalEndpointReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
-	log := r.Log.WithValues("baremetalendpoint", req.NamespacedName)
+	_ = context.Background()
+	_ = r.Log.WithValues("baremetalendpoint", req.NamespacedName)
 
-	bme := &baremetalv1alpha1.BareMetalEndpoint{}
-	if err := r.Client.Get(ctx, req.NamespacedName, bme); err != nil {
-		err = client.IgnoreNotFound(err)
-		if err != nil {
-			log.Error(err, "failed to retrieve BareMetalEndpoint resource")
-		}
-		return ctrl.Result{}, err
-	}
-
-	if bme.DeletionTimestamp.IsZero() == false {
-		// Done deleting so remove bme finalizer
-		baremetalapi.RemoveFinalizer(bme, baremetalv1alpha1.BareMetalEndpointFinalizer)
-		err := r.Update(ctx, bme)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
-	}
-
-	if len(bme.Status.Phase) == 0 {
-		bme.Status.Phase = baremetalv1alpha1.BareMetalEndpointStatusPhasePending
-		err := r.Status().Update(ctx, bme)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
-	}
-
-	// TODO: this is temporary, get rid of this ASAP
-	if bme.Status.Phase != baremetalv1alpha1.BareMetalEndpointStatusPhaseAddressed {
-		bme.Status.Phase = baremetalv1alpha1.BareMetalEndpointStatusPhaseAddressed
-		err := r.Status().Update(ctx, bme)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
-	}
+	// your logic here
+	// TODO: do we need a controller for discovery? Probably not
 
 	return ctrl.Result{}, nil
 }

@@ -1,0 +1,26 @@
+# permissions to do edit baremetalnetworks.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: baremetalnetwork-editor-role
+rules:
+- apiGroups:
+  - baremetal.com.rmb938
+  resources:
+  - baremetalnetworks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - baremetal.com.rmb938
+  resources:
+  - baremetalnetworks/status
+  verbs:
+  - get
+  - patch
+  - update

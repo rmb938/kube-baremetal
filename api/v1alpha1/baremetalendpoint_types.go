@@ -56,20 +56,24 @@ type BareMetalEndpointStatusPhase string
 const (
 	BareMetalEndpointStatusPhasePending   BareMetalEndpointStatusPhase = "Pending"
 	BareMetalEndpointStatusPhaseAddressed BareMetalEndpointStatusPhase = "Addressed"
+	BareMetalEndpointStatusPhaseDeleting  BareMetalEndpointStatusPhase = "Deleting"
+	BareMetalEndpointStatusPhaseDeleted   BareMetalEndpointStatusPhase = "Deleted"
 )
 
 type BareMetalEndpointStatusAddress struct {
 	// +kubebuilder:validation:Required
 	IP string `json:"ip"`
+
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=128
-	CIDR int `json:"cidr"`
+	CIDR string `json:"cidr"`
 	// +kubebuilder:validation:Required
+
 	Gateway string `json:"gateway"`
+
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
 	Nameservers []string `json:"nameservers"`
+
 	// +kubebuilder:validation:Optional
 	Search []string `json:"search,omitempty"`
 }
@@ -89,9 +93,12 @@ type BareMetalEndpointStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:shortName=bme
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.phase`
-// +kubebuilder:printcolumn:name="IP",type=string,JSONPath=`.status.address.ip`
-// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+// +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.phase`,priority=0
+// +kubebuilder:printcolumn:name="IP",type=string,JSONPath=`.status.address.ip`,priority=0
+// +kubebuilder:printcolumn:name="NETWORK GROUP",type=string,JSONPath=`.spec.networkRef.group`,priority=1
+// +kubebuilder:printcolumn:name="NETWORK KIND",type=string,JSONPath=`.spec.networkRef.kind`,priority=1
+// +kubebuilder:printcolumn:name="NETWORK NAME",type=string,JSONPath=`.spec.networkRef.name`,priority=1
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`,priority=0
 
 // BareMetalEndpoint is the Schema for the baremetalendpoints API
 type BareMetalEndpoint struct {

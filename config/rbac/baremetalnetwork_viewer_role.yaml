@@ -1,0 +1,20 @@
+# permissions to do viewer baremetalnetworks.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: baremetalnetwork-viewer-role
+rules:
+- apiGroups:
+  - baremetal.com.rmb938
+  resources:
+  - baremetalnetworks
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - baremetal.com.rmb938
+  resources:
+  - baremetalnetworks/status
+  verbs:
+  - get

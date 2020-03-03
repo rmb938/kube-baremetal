@@ -15,6 +15,18 @@ spec:
   - JSONPath: .status.address.ip
     name: IP
     type: string
+  - JSONPath: .spec.networkRef.group
+    name: NETWORK GROUP
+    priority: 1
+    type: string
+  - JSONPath: .spec.networkRef.kind
+    name: NETWORK KIND
+    priority: 1
+    type: string
+  - JSONPath: .spec.networkRef.name
+    name: NETWORK NAME
+    priority: 1
+    type: string
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date
@@ -83,9 +95,7 @@ spec:
             address:
               properties:
                 cidr:
-                  maximum: 128
-                  minimum: 1
-                  type: integer
+                  type: string
                 gateway:
                   type: string
                 ip:

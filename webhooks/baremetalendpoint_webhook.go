@@ -86,7 +86,7 @@ func (w *BareMetalEndpointWebhook) ValidateCreate(obj runtime.Object) error {
 	}
 
 	return apierrors.NewInvalid(
-		schema.GroupKind{Group: baremetalv1alpha1.GroupVersion.Group, Kind: baremetalv1alpha1.BareMetalDiscoveryKind},
+		schema.GroupKind{Group: baremetalv1alpha1.GroupVersion.Group, Kind: r.Kind},
 		r.Name, allErrs)
 }
 
@@ -164,23 +164,51 @@ func (w *BareMetalEndpointWebhook) ValidateUpdate(obj runtime.Object, old runtim
 				"Cannot change the address",
 			))
 		} else {
+			// validate network
+			var networkIP net.IP
+			cidrIP, network, err := net.ParseCIDR(r.Status.Address.CIDR)
+			if err != nil {
+				allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("address").Child("cidr"), r.Status.Address.CIDR, fmt.Sprintf("invalid cidr address %v", err)))
+			}
+			if network != nil && cidrIP != nil {
+				networkIP = cidrIP.Mask(network.Mask)
+			}
+
 			// Validate ip
 			ip := net.ParseIP(r.Status.Address.IP)
 			if ip == nil {
-				allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("address").Child("ip"), r.Status.Address.IP, "invalid ip"))
+				allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("address").Child("ip"), r.Status.Address.IP, "invalid ip address"))
+			} else {
+				if network != nil {
+					if network.Contains(ip) == false {
+						allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("address").Child("ip"), r.Status.Address.IP, "ip is not in cidr"))
+					}
+				}
 			}
 
 			// Validate gateway
 			gateway := net.ParseIP(r.Status.Address.Gateway)
 			if gateway == nil {
-				allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("address").Child("gateway"), r.Status.Address.Gateway, "invalid gateway"))
+				allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("address").Child("gateway"), r.Status.Address.Gateway, "invalid gateway address"))
+			} else {
+				if network != nil {
+					if network.Contains(gateway) == false {
+						allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("address").Child("gateway"), r.Status.Address.Gateway, "gateway is not in cidr"))
+					}
+				}
 			}
 
 			// Validate nameservers
 			for i, ns := range r.Status.Address.Nameservers {
-				ip := net.ParseIP(ns)
-				if ip == nil {
-					allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("address").Child("nameservers").Index(i), ns, "invalid ip for nameserver"))
+				nsIP := net.ParseIP(ns)
+				if nsIP == nil {
+					allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("address").Child("nameservers").Index(i), ns, "invalid nameserver address"))
+				} else {
+					if networkIP != nil {
+						if len(networkIP) != len(nsIP) {
+							allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("address").Child("nameservers").Index(i), ns, "nameserver ip version is different then cidr ip version"))
+						}
+					}
 				}
 
 				for j, n := range r.Status.Address.Nameservers {
@@ -193,22 +221,6 @@ func (w *BareMetalEndpointWebhook) ValidateUpdate(obj runtime.Object, old runtim
 					}
 				}
 			}
-
-			// validate network
-			var network *net.IPNet
-			if ip != nil {
-				var err error
-				_, network, err = net.ParseCIDR(fmt.Sprintf("%s/%d", r.Status.Address.IP, r.Status.Address.CIDR))
-				if err != nil {
-					allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("address").Child("cidr"), r.Status.Address.CIDR, err.Error()))
-				}
-			}
-
-			if network != nil && gateway != nil {
-				if network.Contains(gateway) == false {
-					allErrs = append(allErrs, field.Invalid(field.NewPath("status").Child("address").Child("gateway"), r.Status.Address.Gateway, fmt.Sprintf("gateway is not in network %s", network.String())))
-				}
-			}
 		}
 	}
 
@@ -217,7 +229,7 @@ func (w *BareMetalEndpointWebhook) ValidateUpdate(obj runtime.Object, old runtim
 	}
 
 	return apierrors.NewInvalid(
-		schema.GroupKind{Group: baremetalv1alpha1.GroupVersion.Group, Kind: baremetalv1alpha1.BareMetalDiscoveryKind},
+		schema.GroupKind{Group: baremetalv1alpha1.GroupVersion.Group, Kind: r.Kind},
 		r.Name, allErrs)
 }
 

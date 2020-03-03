@@ -97,3 +97,23 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - baremetal.com.rmb938
+  resources:
+  - baremetalnetworks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - baremetal.com.rmb938
+  resources:
+  - baremetalnetworks/status
+  verbs:
+  - get
+  - patch
+  - update

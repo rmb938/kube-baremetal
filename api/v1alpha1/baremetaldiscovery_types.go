@@ -143,8 +143,6 @@ type BareMetalDiscoveryList struct {
 	Items           []BareMetalDiscovery `json:"items"`
 }
 
-const BareMetalDiscoveryKind = "BareMetalDiscovery"
-
 func init() {
 	SchemeBuilder.Register(&BareMetalDiscovery{}, &BareMetalDiscoveryList{})
 }
