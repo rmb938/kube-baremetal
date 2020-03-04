@@ -32,16 +32,29 @@ var (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+type BareMetalEndpointBond struct {
+	// The nic macs to bond together
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:Required
+	MACS []string `json:"macs"`
+
+	// The bonding mode
+	// +kubebuilder:validation:Optional
+	Mode BondMode `json:"mode,omitempty"`
+}
+
 // BareMetalEndpointSpec defines the desired state of BareMetalEndpoint
 type BareMetalEndpointSpec struct {
 	// If this endpoint is the primary nic
 	// +kubebuilder:validation:Required
 	Primary bool `json:"primary"`
 
-	// The mac addresses for this endpoint, a bonded nic will have more than 1
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinItems=1
-	MACS []string `json:"macs"`
+	MAC string `json:"macs"`
+
+	// Bond information for the nic
+	// +kubebuilder:validation:Optional
+	Bond *BareMetalEndpointBond `json:"bond,omitempty"`
 
 	// The reference to the network object
 	// +kubebuilder:validation:Required

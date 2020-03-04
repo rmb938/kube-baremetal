@@ -81,6 +81,34 @@ func (w *BareMetalEndpointWebhook) ValidateCreate(obj runtime.Object) error {
 		allErrs = append(allErrs, field.Forbidden(field.NewPath("status").Child("address"), "Cannot have address set when creating"))
 	}
 
+	if r.Spec.Bond != nil {
+
+		// validate macs
+		for i, mac := range r.Spec.Bond.MACS {
+			_, err := net.ParseMAC(mac)
+			if err != nil {
+				allErrs = append(allErrs, field.Invalid(field.NewPath("spec").Child("bond").Child("macs").Index(i), mac, err.Error()))
+			}
+
+			// check to make sure macs are unique
+			for j, m := range r.Spec.Bond.MACS {
+				if i == j {
+					continue
+				}
+				if mac == m {
+					allErrs = append(allErrs, field.Duplicate(field.NewPath("spec").Child("bond").Child("macs").Index(i), "duplicate bond mac"))
+				}
+			}
+		}
+
+	}
+
+	// validate mac
+	_, err := net.ParseMAC(r.Spec.MAC)
+	if err != nil {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec").Child("mac"), r.Spec.MAC, err.Error()))
+	}
+
 	if len(allErrs) == 0 {
 		return nil
 	}
@@ -123,10 +151,18 @@ func (w *BareMetalEndpointWebhook) ValidateUpdate(obj runtime.Object, old runtim
 	}
 
 	// never allow changing mac
-	if reflect.DeepEqual(r.Spec.MACS, oldBME.Spec.MACS) == false {
+	if reflect.DeepEqual(r.Spec.MAC, oldBME.Spec.MAC) == false {
 		allErrs = append(allErrs, field.Forbidden(
-			field.NewPath("spec").Child("macs"),
-			"Cannot change the macs",
+			field.NewPath("spec").Child("mac"),
+			"Cannot change the mac",
+		))
+	}
+
+	// never allow changing bond
+	if reflect.DeepEqual(r.Spec.Bond, oldBME.Spec.Bond) == false {
+		allErrs = append(allErrs, field.Forbidden(
+			field.NewPath("spec").Child("bond"),
+			"Cannot change the bond",
 		))
 	}
 
@@ -136,24 +172,6 @@ func (w *BareMetalEndpointWebhook) ValidateUpdate(obj runtime.Object, old runtim
 			field.NewPath("spec").Child("networkRef"),
 			"Cannot change the networkRef",
 		))
-	}
-
-	// validate macs
-	for i, mac := range r.Spec.MACS {
-		_, err := net.ParseMAC(mac)
-		if err != nil {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("spec").Child("macs").Index(i), mac, err.Error()))
-		}
-
-		// check to make sure macs are unique
-		for j, m := range r.Spec.MACS {
-			if i == j {
-				continue
-			}
-			if mac == m {
-				allErrs = append(allErrs, field.Duplicate(field.NewPath("spec").Child("macs").Index(i), "duplicate mac"))
-			}
-		}
 	}
 
 	if r.Status.Address != nil {

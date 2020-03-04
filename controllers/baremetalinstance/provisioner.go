@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -386,12 +387,13 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 					},
 				}
 
-				// Compile all mac addresses
-				macs := make([]string, 0)
+				// get mac address
+				var macs []string
 				for _, interf := range bmh.Status.Hardware.NICS {
 					if nic.Bond == nil {
 						if interf.Name == nic.Name {
 							macs = append(macs, interf.MAC)
+							break
 						}
 					} else {
 						for _, bondInterf := range nic.Bond.Interfaces {
@@ -402,7 +404,13 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 					}
 				}
 				// Set mac addresses
-				bme.Spec.MACS = macs
+				bme.Spec.MAC = macs[0]
+				if nic.Bond != nil {
+					bme.Spec.Bond = &baremetalv1alpha1.BareMetalEndpointBond{
+						Mode: nic.Bond.Mode,
+						MACS: macs,
+					}
+				}
 
 				err := r.Create(ctx, bme)
 				if err != nil {
@@ -504,6 +512,84 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{}, err
 		}
 
+		bmeList := &baremetalv1alpha1.BareMetalEndpointList{}
+		err = r.List(ctx, bmeList, client.MatchingLabels{baremetalv1alpha1.BareMetalEndpointInstanceLabel: bmi.Name})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		networkLinks := make([]NetworkDataLink, 0)
+		networks := make([]NetworkDataNetwork, 0)
+
+		for _, bme := range bmeList.Items {
+			ownedByUs := false
+
+			for _, ownerRef := range bme.OwnerReferences {
+				if ownerRef.UID == bmi.UID {
+					ownedByUs = true
+				}
+			}
+
+			if ownedByUs == true {
+				linkName, ok := bme.Labels[baremetalv1alpha1.BareMetalEndpointNICLabel]
+				if !ok {
+					continue
+				}
+
+				link := NetworkDataLink{
+					ID:  linkName,
+					MAC: bme.Spec.MAC,
+				}
+
+				if bme.Spec.Bond != nil {
+					link.Type = "bond"
+					link.BondMode = string(bme.Spec.Bond.Mode)
+					link.BondMiiMon = 100
+					link.BondLinks = []string{}
+
+					for i, bondMAC := range bme.Spec.Bond.MACS {
+						bondLinkName := fmt.Sprintf("%s-bond-%d", linkName, i)
+						link.BondLinks = append(link.BondLinks, bondLinkName)
+
+						networkLinks = append(networkLinks, NetworkDataLink{
+							ID:   bondLinkName,
+							MAC:  bondMAC,
+							Type: "phy",
+						})
+					}
+				} else {
+					link.Type = "phy"
+				}
+
+				networkLinks = append(networkLinks, link)
+
+				_, cidrNetwork, err := net.ParseCIDR(bme.Status.Address.CIDR)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+
+				networkType := "ipv4"
+				if cidrNetwork.IP.To4() == nil {
+					networkType = "ipv6"
+				}
+
+				network := NetworkDataNetwork{
+					Link:      linkName,
+					Type:      networkType,
+					IPAddress: bme.Status.Address.IP,
+					Netmask:   net.IP(cidrNetwork.Mask).String(),
+				}
+
+				if bme.Spec.Primary {
+					network.Gateway = bme.Status.Address.Gateway
+					network.Nameservers = bme.Status.Address.Nameservers
+					network.Search = bme.Status.Address.Search
+				}
+
+				networks = append(networks, network)
+			}
+		}
+
 		metadata := fmt.Sprintf(`
 {
   "uuid": "%s",
@@ -513,40 +599,16 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
   "hostname": "%s"
 }
 `, bmi.UID, bmi.Name)
-		networkdata := `
-{
-  "links": [
-    {
-      "id": "eth0",
-      "ethernet_mac_address": "d0:50:99:d3:47:d1",
-      "type": "phy"
-    },
-    {
-      "id": "eth1",
-      "ethernet_mac_address": "d0:50:99:d3:47:d2",
-      "type": "phy"
-    },
-    {
-      "id": "bond0",
-      "type": "bond",
-      "bond_mode": "active-backup",
-      "bond_miimon": 100,
-      "bond_links": ["eth0", "eth1"]
-    }
-  ],
-  "networks": [
-    {
-      "link": "bond0",
-      "type": "ipv4",
-      "ip_address": "192.168.23.160",
-      "netmask": "255.255.255.0",
-      "gateway": "192.168.23.254",
-      "dns_nameservers": ["192.168.23.254"],
-      "dns_search": ["rmb938.me"]
-    }
-  ]
-}
-`
+
+		networkData := &NetworkData{
+			Links:    networkLinks,
+			Networks: networks,
+		}
+		networkDataBytes, err := json.Marshal(networkData)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
 		userdata := `#cloud-config\n{}`
 
 		// agent is not doing anything
@@ -558,7 +620,7 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				ImageURL:            "https://mirrors.rmb938.me/centos/cloud-images/CentOS-7-x86_64-GenericCloud-1907.raw.gz",
 				DiskPath:            fmt.Sprintf("/dev/%s", bmh.Spec.ImageDrive),
 				MetadataContents:    base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(metadata))),
-				NetworkDataContents: base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(networkdata))),
+				NetworkDataContents: base64.StdEncoding.EncodeToString(networkDataBytes),
 				UserDataContents:    base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(userdata))),
 			}
 			imageRequestBytes, err := json.Marshal(imageRequest)

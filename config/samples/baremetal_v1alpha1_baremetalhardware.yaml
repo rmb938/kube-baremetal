@@ -6,8 +6,13 @@ spec:
   systemUUID: 00000000-0000-0000-0000-f3ee00f0f3ee
   imageDrive: nvme0n1
   nics:
-    - name: eth0
+    - name: bond0
       primary: true
+      bond:
+        interfaces:
+          - eth0
+          - eth1
+        mode: active-backup
       networkRef:
         name: baremetalnetwork-sample
         kind: BareMetalNetwork

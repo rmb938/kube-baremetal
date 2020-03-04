@@ -60,13 +60,31 @@ spec:
         spec:
           description: BareMetalEndpointSpec defines the desired state of BareMetalEndpoint
           properties:
+            bond:
+              description: Bond information for the nic
+              properties:
+                macs:
+                  description: The nic macs to bond together
+                  items:
+                    type: string
+                  minItems: 1
+                  type: array
+                mode:
+                  description: The bonding mode
+                  enum:
+                  - balance-rr
+                  - active-backup
+                  - balance-xor
+                  - lacp
+                  - broadcast
+                  - balance-tlb
+                  - balance-alb
+                  type: string
+              required:
+              - macs
+              type: object
             macs:
-              description: The mac addresses for this endpoint, a bonded nic will
-                have more than 1
-              items:
-                type: string
-              minItems: 1
-              type: array
+              type: string
             networkRef:
               description: The reference to the network object
               properties:

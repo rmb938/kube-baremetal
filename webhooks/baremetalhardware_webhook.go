@@ -67,7 +67,7 @@ func (w *BareMetalHardwareWebhook) Default(obj runtime.Object) {
 		for _, nic := range r.Spec.NICS {
 			if nic.Bond != nil {
 				if len(nic.Bond.Mode) == 0 {
-					nic.Bond.Mode = baremetalv1alpha1.BondModeBalanceRR
+					nic.Bond.Mode = baremetalv1alpha1.BondModeActiveBackup
 				}
 			}
 		}
