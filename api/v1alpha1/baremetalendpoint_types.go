@@ -39,7 +39,7 @@ type BareMetalEndpointBond struct {
 	MACS []string `json:"macs"`
 
 	// The bonding mode
-	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Required
 	Mode BondMode `json:"mode,omitempty"`
 }
 
