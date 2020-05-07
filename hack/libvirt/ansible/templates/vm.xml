@@ -5,8 +5,8 @@
     <vcpu placement="static">1</vcpu>
     <os>
         <type arch="x86_64" machine="pc-i440fx-4.2">hvm</type>
-        <boot dev="network"/>
-        <boot dev="hd"/>
+        <loader readonly="yes" type="pflash">/usr/share/edk2/ovmf/OVMF_CODE.fd</loader>
+        <bootmenu enable="yes" timeout="5000"/>
     </os>
     <features>
         <acpi/>
@@ -33,6 +33,7 @@
             <source file="{{ playbook_dir }}/../vms/kube-baremetal-0.qcow2"/>
             <target dev="vda" bus="virtio"/>
             <address type="pci" domain="0x0000" bus="0x00" slot="0x04" function="0x0"/>
+            <boot order='2'/>
         </disk>
         <controller type="usb" index="0" model="ich9-ehci1">
             <address type="pci" domain="0x0000" bus="0x00" slot="0x05" function="0x7"/>
@@ -60,6 +61,7 @@
             <source bridge="{{ network_bridge }}"/>
             <model type="virtio"/>
             <address type="pci" domain="0x0000" bus="0x00" slot="0x03" function="0x0"/>
+            <boot order='1'/>
         </interface>
         <serial type="pty">
             <target type="isa-serial" port="0">

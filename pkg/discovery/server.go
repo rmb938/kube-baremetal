@@ -199,7 +199,7 @@ func (s *server) ipxeBoot(c *gin.Context) {
 
 	s.logger.Info("booting into agent", "cmdline", cmdLine)
 
-	c.String(http.StatusOK, "#!ipxe\necho Booting into the agent\nsleep 10\ninitrd files/linuxkit-agent-initrd.img\nchain files/linuxkit-agent-kernel %s", cmdLine)
+	c.String(http.StatusOK, "#!ipxe\necho Booting into the agent\nsleep 10\ninitrd files/linuxkit-agent-initrd.img\nchain files/linuxkit-agent-kernel initrd=linuxkit-agent-initrd.img root=/dev/ram0 %s", cmdLine)
 }
 
 func (s *server) heartbeat(c *gin.Context) {

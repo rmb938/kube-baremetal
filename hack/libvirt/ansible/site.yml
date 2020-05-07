@@ -4,6 +4,14 @@
   vars:
     network_bridge: kbm0
   tasks:
+    - name: DOWNLOAD IPXE
+      become: yes
+      get_url:
+        url: http://boot.ipxe.org/ipxe.efi
+        checksum: sha256:2c8d824eecabddafacbbf02043f0d0e04ba9e14c30f2f9493e00782206721c68
+        dest: "/usr/share/ipxe/ipxe.efi"
+        mode: 0644
+
     - name: SETUP NETWORK
       become: yes
       virt_net:

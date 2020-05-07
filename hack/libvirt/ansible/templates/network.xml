@@ -1,12 +1,18 @@
-<network>
+<network xmlns:dnsmasq='http://libvirt.org/schemas/network/dnsmasq/1.0'>
     <name>kube-baremetal</name>
     <forward mode='nat'/>
     <bridge name='{{ network_bridge }}' stp='on' delay='0'/>
     <ip address='192.168.150.1' netmask='255.255.255.0'>
+        <tftp root='/usr/share/ipxe'/>
         <dhcp>
             <range start='192.168.150.2' end='192.168.150.10'/>
             <bootp file="http://192.168.150.1:8081/ipxe/boot"/>
         </dhcp>
+        <dnsmasq:options>
+            <dnsmasq:option value='dhcp-match=set:ipxe,175'/>
+            <dnsmasq:option value='dhcp-boot=tag:!ipxe,ipxe.efi'/>
+            <dnsmasq:option value='dhcp-boot=&quot;http://192.168.150.1:8081/ipxe/boot&quot;'/>
+        </dnsmasq:options>
     </ip>
 </network>
 
