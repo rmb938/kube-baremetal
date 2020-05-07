@@ -3,10 +3,10 @@ kind: BareMetalNetwork
 metadata:
   name: baremetalnetwork-sample
 spec:
-  cidr: 192.168.150.0/24
-  gateway: 192.168.150.1
-  start: 192.168.150.50
-  end: 192.168.150.100
+  cidr: 192.168.23.0/24
+  gateway: 192.168.23.254
+  start: 192.168.23.50
+  end: 192.168.23.100
   nameservers:
-    - 192.168.150.1
+    - 192.168.23.254
   search: []

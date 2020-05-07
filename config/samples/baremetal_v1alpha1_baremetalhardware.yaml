@@ -3,8 +3,8 @@ kind: BareMetalHardware
 metadata:
   name: baremetalhardware-sample
 spec:
-  systemUUID: f4fe74ae-c4e0-4eed-96b2-fc4692e7b396
-  imageDrive: vda
+  systemUUID: 00000000-0000-0000-0000-f3ee00f0f3ee
+  imageDrive: nvme0n1
   nics:
     - name: eth0
       primary: true

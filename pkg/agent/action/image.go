@@ -6,12 +6,14 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 
 	"github.com/diskfs/go-diskfs"
 	"github.com/diskfs/go-diskfs/disk"
 	"github.com/diskfs/go-diskfs/filesystem"
+	"github.com/diskfs/go-diskfs/partition/gpt"
 	"github.com/diskfs/go-diskfs/partition/mbr"
 	"github.com/go-logr/logr"
 	"github.com/mholt/archiver"
@@ -176,68 +178,66 @@ func (i *imageAction) do() error {
 	cloudInitPartitionNumber := -1
 
 	if rawTable.Type() == "gpt" {
-		i.logger.Error(nil, "GPT partition tables are not supported")
-		return fmt.Errorf("gpt partition tables are not supported")
+		destDisk.File.Close()
 
-		// destDisk.File.Close()
-		//
-		// i.logger.Info("Running sgdisk to move the GPT partition table")
-		// sgdiskCommand := exec.Command("sgdisk", "-e", i.DiskPath)
-		// out, err := sgdiskCommand.CombinedOutput()
-		// if err != nil {
-		// 	i.logger.Error(err, "error running sgdisk to move the GPT partition table", "disk", i.DiskPath, "stdout/err", string(out))
-		// 	return fmt.Errorf("error running sgdisk to move the GPT partition table %s: %v: %v", i.DiskPath, err, string(out))
-		// }
-		//
-		// i.logger.Info("Reopening drive")
-		// destDisk, err = diskfs.Open(i.DiskPath)
-		// if err != nil {
-		// 	i.logger.Error(err, "error opening disk", "disk", i.DiskPath)
-		// 	return fmt.Errorf("error opening disk %s: %v", i.DiskPath, err)
-		// }
-		// defer destDisk.File.Close()
-		//
-		// i.logger.Info("Rereading partition table")
-		// rawTable, err = destDisk.GetPartitionTable()
-		// if err != nil {
-		// 	i.logger.Error(err, "error reading partition table from drive", "disk", i.DiskPath)
-		// 	return fmt.Errorf("error reading partition table from drive %s: %v", i.DiskPath, err)
-		// }
-		//
-		// table := rawTable.(*gpt.Table)
-		//
-		// cloudInitSize := 64 * 1024 * 1024 // 64 MB
-		// cloudInitSectors := uint64(cloudInitSize / table.LogicalSectorSize)
-		// // we want to create it at the end of the disk
-		// // so find the disk sector count and minus the cloudinit sectors
-		// // minus 33 to leave room for gpt partition table at the end of the disk
-		// cloudInitStart := uint64(int(destDisk.Size)/table.LogicalSectorSize) - cloudInitSectors - 33
-		//
-		// lastUsedParition := -1
-		// for partIndex, part := range table.Partitions {
-		// 	if part.Type != gpt.Unused {
-		// 		lastUsedParition = partIndex
-		// 	}
-		// }
-		//
-		// if lastUsedParition >= len(table.Partitions) {
-		// 	i.logger.Error(nil, "gpt partition table is full, there is no room for cloud-init", "disk", i.DiskPath)
-		// 	return fmt.Errorf("gpt partition table is full, there is no room for cloud-init on drive %s", i.DiskPath)
-		// }
-		//
-		// cloudInitPartitionNumber = lastUsedParition + 1
-		// table.Partitions[cloudInitPartitionNumber] = &gpt.Partition{
-		// 	Type:  gpt.LinuxFilesystem,
-		// 	Start: cloudInitStart,
-		// 	Size:  uint64(cloudInitSize),
-		// }
-		//
-		// i.logger.Info("Writing gpt partition table to disk")
-		// err = destDisk.Partition(table)
-		// if err != nil {
-		// 	i.logger.Error(err, "error writing gpt partition table to drive", "disk", i.DiskPath)
-		// 	return fmt.Errorf("error writing gpt partition table to drive %s: %v", i.DiskPath, err)
-		// }
+		i.logger.Info("Running sgdisk to move the GPT partition table")
+		sgdiskCommand := exec.Command("sgdisk", "-e", i.DiskPath)
+		out, err := sgdiskCommand.CombinedOutput()
+		if err != nil {
+			i.logger.Error(err, "error running sgdisk to move the GPT partition table", "disk", i.DiskPath, "stdout/err", string(out))
+			return fmt.Errorf("error running sgdisk to move the GPT partition table %s: %v: %v", i.DiskPath, err, string(out))
+		}
+
+		i.logger.Info("Reopening drive")
+		destDisk, err = diskfs.Open(i.DiskPath)
+		if err != nil {
+			i.logger.Error(err, "error opening disk", "disk", i.DiskPath)
+			return fmt.Errorf("error opening disk %s: %v", i.DiskPath, err)
+		}
+		defer destDisk.File.Close()
+
+		i.logger.Info("Rereading partition table")
+		rawTable, err = destDisk.GetPartitionTable()
+		if err != nil {
+			i.logger.Error(err, "error reading partition table from drive", "disk", i.DiskPath)
+			return fmt.Errorf("error reading partition table from drive %s: %v", i.DiskPath, err)
+		}
+
+		table := rawTable.(*gpt.Table)
+
+		cloudInitSize := 64 * 1024 * 1024 // 64 MB
+		cloudInitSectors := uint64(cloudInitSize / table.LogicalSectorSize)
+		// we want to create it at the end of the disk
+		// so find the disk sector count and minus the cloudinit sectors
+		// minus 33 to leave room for gpt partition table at the end of the disk
+		cloudInitStart := uint64(int(destDisk.Size)/table.LogicalSectorSize) - cloudInitSectors - 33
+
+		lastUsedParition := -1
+		for partIndex, part := range table.Partitions {
+			if part.Type != gpt.Unused {
+				lastUsedParition = partIndex
+			}
+		}
+
+		if lastUsedParition >= len(table.Partitions) {
+			i.logger.Error(nil, "gpt partition table is full, there is no room for cloud-init", "disk", i.DiskPath)
+			return fmt.Errorf("gpt partition table is full, there is no room for cloud-init on drive %s", i.DiskPath)
+		}
+
+		cloudInitPartitionIndex := lastUsedParition + 1
+		table.Partitions[cloudInitPartitionIndex] = &gpt.Partition{
+			Type:  gpt.LinuxFilesystem,
+			Start: cloudInitStart,
+			Size:  uint64(cloudInitSize),
+		}
+		cloudInitPartitionNumber = cloudInitPartitionIndex + 1
+
+		i.logger.Info("Writing gpt partition table to disk")
+		err = destDisk.Partition(table)
+		if err != nil {
+			i.logger.Error(err, "error writing gpt partition table to drive", "disk", i.DiskPath)
+			return fmt.Errorf("error writing gpt partition table to drive %s: %v", i.DiskPath, err)
+		}
 	} else {
 		table := rawTable.(*mbr.Table)
 
