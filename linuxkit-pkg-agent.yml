@@ -4,8 +4,6 @@ network: true
 arches:
   - amd64
 config:
-  command:
-    - /agent
   binds:
     - /dev:/dev
     - /sys:/sys

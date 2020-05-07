@@ -1,0 +1,18 @@
+resources:
+  - ../default
+
+patchesStrategicMerge:
+  - |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: kube-baremetal-controller-manager
+      namespace: kube-baremetal-system
+    spec:
+      strategy:
+        type: Recreate
+      template:
+        spec:
+          containers:
+            - name: manager
+              args: []

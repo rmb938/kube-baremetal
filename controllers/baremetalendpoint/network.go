@@ -88,7 +88,7 @@ func (r *Network) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	if bme.DeletionTimestamp.IsZero() == false {
-		// bme is already deleting so we don't care about it
+		// bme is already deleted so we don't care about it
 		if bme.Status.Phase == baremetalv1alpha1.BareMetalEndpointStatusPhaseDeleted {
 			return ctrl.Result{}, nil
 		}
@@ -126,11 +126,6 @@ func (r *Network) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	// if we can't find the bmn retry back-off, it may eventually be found
-	if bmn == nil {
-		return ctrl.Result{Requeue: true}, nil
-	}
-
 	// bme is already addressed so we don't care about it
 	if bme.Status.Phase == baremetalv1alpha1.BareMetalEndpointStatusPhaseAddressed {
 		return ctrl.Result{}, nil
@@ -146,6 +141,24 @@ func (r *Network) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
+	// if we can't find the bmn retry back-off, it may eventually be found
+	if bmn == nil {
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	// bme is pending so set it to addressing
+	if bme.Status.Phase == baremetalv1alpha1.BareMetalEndpointStatusPhasePending {
+		bme.Status.Phase = baremetalv1alpha1.BareMetalEndpointStatusPhaseAddressing
+		err := r.Status().Update(ctx, bme)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		r.Recorder.Eventf(bme, corev1.EventTypeNormal, "Addressing", "Endpoint is being addressed")
+		return ctrl.Result{}, nil
+	}
+
+	// lock so we don't accidentally hand out duplicate ips
+	// this doesn't need to be fast, it needs to be accurate
 	r.addressLock.Lock()
 	defer r.addressLock.Unlock()
 
@@ -214,11 +227,13 @@ func (r *Network) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 	}
 
+	// if a next ip couldn't be found event and try again with back-off
 	if nextIP == nil {
 		r.Recorder.Eventf(bme, corev1.EventTypeWarning, "NoIPAvailable", "Could find an available IP address on the BareMetalNetwork %s", bme.Spec.NetworkRef.Name)
 		return ctrl.Result{Requeue: true}, err
 	}
 
+	// a next ip was found so set the address
 	bme.Status.Address = &baremetalv1alpha1.BareMetalEndpointStatusAddress{
 		IP:          nextIP.String(),
 		CIDR:        bmn.Spec.CIDR,
@@ -234,6 +249,8 @@ func (r *Network) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
+// helper method for incrementing IP addresses
+// I wish Go had a good ipaddress library like python https://docs.python.org/3/library/ipaddress.html
 func (r *Network) inc(ip net.IP) {
 	for j := len(ip) - 1; j >= 0; j-- {
 		ip[j]++
@@ -244,6 +261,7 @@ func (r *Network) inc(ip net.IP) {
 }
 
 func (r *Network) SetupWithManager(mgr ctrl.Manager) error {
+	// custom field index so we can index based off of the network ref settings
 	if err := mgr.GetFieldIndexer().IndexField(&baremetalv1alpha1.BareMetalEndpoint{}, "spec.networkRef.group,kind,name", func(rawObj runtime.Object) []string {
 		bme := rawObj.(*baremetalv1alpha1.BareMetalEndpoint)
 		return []string{bme.Spec.NetworkRef.Group + "." + bme.Spec.NetworkRef.Kind + "." + bme.Spec.NetworkRef.Name}

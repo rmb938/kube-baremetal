@@ -16,6 +16,6 @@ type Status struct {
 }
 
 type Action interface {
-	Do(hardware *baremetalv1alpha1.BareMetalDiscoverySpec)
+	Do(hardware *baremetalv1alpha1.BareMetalDiscoveryHardware)
 	Status() (*Status, error)
 }

@@ -181,7 +181,7 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 
 		// check agent status
-		agentStatus, err := r.getAgentStatus(bmi.Status.AgentInfo.IP)
+		agentStatus, err := r.getAgentStatus(ctx, bmi.Status.AgentInfo.IP)
 		if err != nil {
 			r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Could not check agent status: %v", err)
 			return ctrl.Result{}, err
@@ -191,8 +191,12 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			r.Recorder.Eventf(bmi, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceCleaningEventReason, "Cleaning the instance off of BareMetalHardware %s", bmh.Name)
 			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalHardwareCleaningEventReason, "Cleaning the BareMetalInstance %s off of the hardware", bmi.Name)
 
-			// agent is not doing anything
-			cleanResp, err := http.Post("http://"+bmi.Status.AgentInfo.IP+":10443/clean", "application/json", nil)
+			// tell agent to clean
+			req, err := http.NewRequestWithContext(ctx, "POST", "http://"+bmi.Status.AgentInfo.IP+":10443/clean", nil)
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("error while creating request for agent clean: %v", err)
+			}
+			cleanResp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Could not tell agent to clean: %v", err)
 				return ctrl.Result{}, err
@@ -219,6 +223,9 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			// agent is doing something
 			if agentStatus.Type != action.CleaningActionType {
 				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentWrongAction", "Agent is performing a different action")
+				if len(agentStatus.Error) > 0 {
+					r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentLastActionFailed", "Agent last action %s failed: %v", agentStatus.Type, agentStatus.Error)
+				}
 				return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
 			}
 
@@ -506,7 +513,7 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 
 		// check agent status
-		agentStatus, err := r.getAgentStatus(bmi.Status.AgentInfo.IP)
+		agentStatus, err := r.getAgentStatus(ctx, bmi.Status.AgentInfo.IP)
 		if err != nil {
 			r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Could not check agent status: %v", err)
 			return ctrl.Result{}, err
@@ -617,7 +624,10 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceImagingEventReason, "Imaging the BareMetalInstance %s onto the hardware", bmi.Name)
 
 			imageRequest := action.ImageRequest{
-				ImageURL:            "https://mirrors.rmb938.me/centos/cloud-images/CentOS-7-x86_64-GenericCloud-1907.raw.gz",
+				ImageURL: "https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-2003.raw.tar.gz",
+				// ImageURL:            "https://download.fedoraproject.org/pub/fedora/linux/releases/32/Cloud/x86_64/images/Fedora-Cloud-Base-32-1.6.x86_64.raw.xz",
+				// ImageURL:            "https://cdimage.debian.org/cdimage/openstack/current-10/debian-10-openstack-amd64.raw",
+				// ImageURL:            "https://download.opensuse.org/repositories/Cloud:/Images:/Leap_15.1/images/openSUSE-Leap-15.1-EC2-HVM.x86_64.raw.xz",
 				DiskPath:            fmt.Sprintf("/dev/%s", bmh.Spec.ImageDrive),
 				MetadataContents:    base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(metadata))),
 				NetworkDataContents: base64.StdEncoding.EncodeToString(networkDataBytes),
@@ -629,7 +639,12 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				return ctrl.Result{}, err
 			}
 
-			imageResp, err := http.Post("http://"+bmi.Status.AgentInfo.IP+":10443/image", "application/json", bytes.NewBuffer(imageRequestBytes))
+			req, err := http.NewRequestWithContext(ctx, "POST", "http://"+bmi.Status.AgentInfo.IP+":10443/image", bytes.NewBuffer(imageRequestBytes))
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("error while creating request for agent image: %v", err)
+			}
+
+			imageResp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentError", "Could not tell agent to image: %v", err)
 				return ctrl.Result{}, err
@@ -657,6 +672,9 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 			if agentStatus.Type != action.ImagingActionType {
 				r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentWrongAction", "Agent is performing a different action")
+				if len(agentStatus.Error) > 0 {
+					r.Recorder.Eventf(bmi, corev1.EventTypeWarning, "AgentLastActionFailed", "Agent last action %s failed: %v", agentStatus.Type, agentStatus.Error)
+				}
 				return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
 			}
 
@@ -703,6 +721,9 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				if err != nil {
 					return ctrl.Result{}, err
 				}
+
+				// TODO: bmc (re)boot instance
+
 				return ctrl.Result{}, nil
 			}
 		}
@@ -711,8 +732,13 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
-func (r *Provisioner) getAgentStatus(ip string) (*action.Status, error) {
-	statusResp, err := http.Get("http://" + ip + ":10443/status")
+func (r *Provisioner) getAgentStatus(ctx context.Context, ip string) (*action.Status, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://"+ip+":10443/status", nil)
+	if err != nil {
+		return nil, fmt.Errorf("error while creating request for agent status: %v", err)
+	}
+
+	statusResp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error while requesting agent status: %v", err)
 	}

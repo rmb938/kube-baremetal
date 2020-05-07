@@ -27,8 +27,10 @@ bin
 kind-kubeconfig
 tilt.d
 tilt-settings.json
-.tiltbuild
 
 # discovery files
 discovery_files/*
 !discovery_files/.gitkeep
+
+hack/libvirt/vms/*
+hack/libvirt/vms/.gitkeep

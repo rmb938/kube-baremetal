@@ -147,6 +147,10 @@ func (w *BareMetalHardwareWebhook) ValidateCreate(obj runtime.Object) error {
 		allErrs = append(allErrs, field.Forbidden(field.NewPath("status").Child("hardware"), "Cannot have hardware set when creating"))
 	}
 
+	if r.Status.InstanceRef != nil {
+		allErrs = append(allErrs, field.Forbidden(field.NewPath("status").Child("instanceRef"), "Cannot have instanceRef set when creating"))
+	}
+
 	allErrs = append(allErrs, w.validateNICs(r)...)
 
 	if len(allErrs) == 0 {

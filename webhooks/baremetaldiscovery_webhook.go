@@ -148,7 +148,9 @@ func (w *BareMetalDiscoveryWebhook) ValidateCreate(obj runtime.Object) error {
 	// TODO: block creation if existing CBMH
 
 	// Validate Hardware
-	allErrs = append(allErrs, validateHardware(r.Spec.Hardware, field.NewPath("spec"))...)
+	if r.Status.Hardware != nil {
+		allErrs = append(allErrs, validateHardware(r.Status.Hardware, field.NewPath("status"))...)
+	}
 
 	if len(allErrs) == 0 {
 		return nil
@@ -177,11 +179,15 @@ func (w *BareMetalDiscoveryWebhook) ValidateUpdate(obj runtime.Object, old runti
 	}
 
 	// never allow changing the hardware if it is already set
-	if oldBMD.Spec.Hardware != nil && reflect.DeepEqual(r.Spec.Hardware, oldBMD.Spec.Hardware) == false {
+	if oldBMD.Status.Hardware != nil && reflect.DeepEqual(r.Status.Hardware, oldBMD.Status.Hardware) == false {
 		allErrs = append(allErrs, field.Forbidden(
-			field.NewPath("spec").Child("hardware"),
+			field.NewPath("status").Child("hardware"),
 			"Cannot change the discovery hardware",
 		))
+	}
+
+	if oldBMD.Status.Hardware == nil && r.Status.Hardware != nil {
+		allErrs = append(allErrs, validateHardware(r.Status.Hardware, field.NewPath("status"))...)
 	}
 
 	if len(allErrs) == 0 {

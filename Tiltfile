@@ -13,65 +13,35 @@ settings.update(read_json(
     default={},
 ))
 
-tilt_helper_dockerfile_header = """
-# Tilt image
-FROM alpine:3.11 as tilt-helper
-# Support live reloading with Tilt
-RUN wget --output-document /restart.sh --quiet https://raw.githubusercontent.com/windmilleng/rerun-process-wrapper/master/restart.sh  && \
-    wget --output-document /start.sh --quiet https://raw.githubusercontent.com/windmilleng/rerun-process-wrapper/master/start.sh && \
-    chmod +x /start.sh && chmod +x /restart.sh
-"""
-
 
 def deploy_baremetal_manager():
-    tilt_dockerfile_header_manager = """
-FROM alpine:3.11 as tilt
-WORKDIR /
-COPY --from=tilt-helper /start.sh .
-COPY --from=tilt-helper /restart.sh .
-COPY .tiltbuild/manager .
-COPY discovery_files /discovery_files
-"""
-
     # Set up a local_resource build of the provider's manager binary. The provider is expected to have a main.go in
     # manager_build_path. The binary is written to .tiltbuild/manager.
     local_resource(
         "manager",
-        cmd='mkdir -p .tiltbuild;CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags \'-extldflags "-static"\' -o .tiltbuild/manager main.go',
+        cmd='make manager',
         deps=[
             "main.go",
-            "go.mod",
-            "go.sum",
             "api",
             "apis",
             "controllers",
             "webhook",
             "webhooks",
-            "pkg",
-            "discovery_files"
+            "pkg"
         ],
     )
 
-    dockerfile_contents_manager = "\n".join([
-        tilt_helper_dockerfile_header,
-        tilt_dockerfile_header_manager
-    ])
-
-    docker_build(
-        ref='controller',
-        context='.',
-        dockerfile_contents=dockerfile_contents_manager,
-        target="tilt",
-        entrypoint="sh /start.sh /manager",
-        only=[".tiltbuild/manager", "discovery_files"],
-        live_update=[
-            sync("discovery_files", "/discovery_files"),
-            sync(".tiltbuild/manager", "/manager"),
-            run("sh /restart.sh"),
+    custom_build(
+        'controller',
+        'docker build -t $EXPECTED_REF -f manager.dockerfile .',
+        deps=[
+            'bin/kube-baremetal-manager-linux-amd64',
+            'discovery_files',
+            'manager.dockerfile'
         ],
     )
 
-    yaml = str(kustomize("config/default"))
+    yaml = str(kustomize("config/tilt"))
     substitutions = settings.get("kustomize_substitutions", {})
     for substitution in substitutions:
         value = substitutions[substitution]
@@ -86,7 +56,7 @@ COPY discovery_files /discovery_files
 # the network each time.
 def deploy_cert_manager():
     registry = "quay.io/jetstack"
-    version = "v0.11.0"
+    version = "v0.14.3"
     images = ["cert-manager-controller", "cert-manager-cainjector", "cert-manager-webhook"]
 
     if settings.get("preload_images_for_kind"):
@@ -100,7 +70,7 @@ def deploy_cert_manager():
 
     # wait for the service to become available
     local(
-        "kubectl wait --kubeconfig {} --for=condition=Available --timeout=300s apiservice v1beta1.webhook.cert-manager.io".format(
+        "kubectl wait -n cert-manager --kubeconfig {} --for=condition=Available --timeout=300s deployment cert-manager-webhook".format(
             kind_kubeconfig))
 
 

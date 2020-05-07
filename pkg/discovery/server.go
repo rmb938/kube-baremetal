@@ -249,6 +249,7 @@ func (s *server) ready(c *gin.Context) {
 	case 0:
 		// no hardware found so error 404
 		c.Status(http.StatusNotFound)
+		c.Abort()
 		return
 	case 1:
 		// one hardware found so we are done
@@ -328,8 +329,13 @@ func (s *server) ready(c *gin.Context) {
 
 }
 
+type discoverInput struct {
+	SystemUUID types.UID                                     `json:"systemUUID"`
+	Hardware   *baremetalv1alpha1.BareMetalDiscoveryHardware `json:"hardware,omitempty"`
+}
+
 func (s *server) discover(c *gin.Context) {
-	input := &baremetalv1alpha1.BareMetalDiscoverySpec{}
+	input := &discoverInput{}
 
 	if err := c.ShouldBindJSON(input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -419,25 +425,43 @@ func (s *server) discover(c *gin.Context) {
 		return
 	}
 
-	// TODO: allow secure discovery by checking if the hardware is already set
-	//   if it is do nothing otherwise set it
-	if bmd != nil {
-		// an existing discovery was found so we don't need to do anything
+	if bmd == nil {
+		// TODO: allow secure discovery, don't create bmd, error instead
+
+		bmd = &baremetalv1alpha1.BareMetalDiscovery{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: string(input.SystemUUID),
+			},
+			Spec: baremetalv1alpha1.BareMetalDiscoverySpec{
+				SystemUUID: input.SystemUUID,
+			},
+		}
+	}
+
+	if bmd.Status.Hardware != nil {
+		// an existing discovery was found with hardware so we don't need to do anything
 		c.Status(http.StatusNoContent)
 		return
 	}
 
-	bmd = &baremetalv1alpha1.BareMetalDiscovery{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: string(input.SystemUUID),
-		},
-		Spec: baremetalv1alpha1.BareMetalDiscoverySpec{
-			SystemUUID: input.SystemUUID,
-			Hardware:   input.Hardware,
-		},
+	err = s.Client.Create(context.Background(), bmd)
+	if err != nil {
+		if apiError, ok := err.(apierrors.APIStatus); ok {
+			if apiError.Status().Code == 0 {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(int(apiError.Status().Code), apiError.Status())
+			}
+			c.Abort()
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.Abort()
+		return
 	}
 
-	err = s.Client.Create(context.Background(), bmd)
+	bmd.Status.Hardware = input.Hardware
+	err = s.Client.Status().Update(context.Background(), bmd)
 	if err != nil {
 		if apiError, ok := err.(apierrors.APIStatus); ok {
 			if apiError.Status().Code == 0 {

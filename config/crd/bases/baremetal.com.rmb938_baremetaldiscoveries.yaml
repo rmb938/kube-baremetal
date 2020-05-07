@@ -9,13 +9,13 @@ metadata:
   name: baremetaldiscoveries.baremetal.com.rmb938
 spec:
   additionalPrinterColumns:
-  - JSONPath: .spec.hardware.cpu.modelName
+  - JSONPath: .status.hardware.cpu.modelName
     name: CPU Model
     type: string
-  - JSONPath: .spec.hardware.cpu.cpus
+  - JSONPath: .status.hardware.cpu.cpus
     name: CPU Count
     type: string
-  - JSONPath: .spec.hardware.ram
+  - JSONPath: .status.hardware.ram
     name: Ram
     type: string
   - JSONPath: .metadata.creationTimestamp
@@ -50,6 +50,18 @@ spec:
           type: object
         spec:
           description: BareMetalDiscoverySpec defines the desired state of BareMetalDiscovery
+          properties:
+            systemUUID:
+              description: UID is a type that holds unique ID values, including UUIDs.  Because
+                we don't ONLY use UUIDs, this is an alias to string.  Being a type
+                captures intent and helps make sure that UIDs and names do not get
+                conflated.
+              type: string
+          required:
+          - systemUUID
+          type: object
+        status:
+          description: BareMetalDiscoveryStatus defines the observed state of BareMetalDiscovery
           properties:
             hardware:
               description: The hardware that the discovered system contains
@@ -129,17 +141,6 @@ spec:
               - ram
               - storage
               type: object
-            systemUUID:
-              description: UID is a type that holds unique ID values, including UUIDs.  Because
-                we don't ONLY use UUIDs, this is an alias to string.  Being a type
-                captures intent and helps make sure that UIDs and names do not get
-                conflated.
-              type: string
-          required:
-          - systemUUID
-          type: object
-        status:
-          description: BareMetalDiscoveryStatus defines the observed state of BareMetalDiscovery
           type: object
       required:
       - spec

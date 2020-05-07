@@ -181,9 +181,10 @@ const (
 	BareMetalHardwareReadyEventReason    string = "HardwareReady"
 	BareMetalHardwareNotReadyEventReason string = "HardwareNotReady"
 
-	BareMetalHardwareDiscoveryNotFoundEventReason  string = "DiscoveryNotFound"
-	BareMetalHardwareManyDiscoveryFoundEventReason string = "ManyDiscoveryFound"
-	BareMetalHardwareDiscoveryFoundEventReason     string = "DiscoveryFound"
+	BareMetalHardwareDiscoveryNotFoundEventReason   string = "DiscoveryNotFound"
+	BareMetalHardwareDiscoveryNoHardwareEventReason string = "DiscoveryNoHardware"
+	BareMetalHardwareManyDiscoveryFoundEventReason  string = "ManyDiscoveryFound"
+	BareMetalHardwareDiscoveryFoundEventReason      string = "DiscoveryFound"
 
 	BareMetalHardwareCleaningEventReason string = "HardwareCleaning"
 	BareMetalHardwareCleanedEventReason  string = "HardwareCleaned"

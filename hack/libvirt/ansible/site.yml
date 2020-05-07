@@ -1,0 +1,42 @@
+- hosts: localhost
+  connection: local
+  name: SETUP DEV WITH LIBVIRT
+  vars:
+    network_bridge: kbm0
+  tasks:
+    - name: DOWNLOAD IPXE
+      get_url:
+        url: http://boot.ipxe.org/ipxe.iso
+        checksum: sha256:6a4709ae5632e059247deaa3089101560b121086c1a6484d017bcaa8dcbbb548
+        dest: "{{ playbook_dir }}/../vms/ipxe.iso"
+        mode: 0644
+
+    - name: SETUP NETWORK
+      become: yes
+      virt_net:
+        command: define
+        name: kube-baremetal
+        xml: '{{ lookup("template", "network.xml") }}'
+
+    - name: ACTIVATE NETWORK
+      become: yes
+      virt_net:
+        state: active
+        name: kube-baremetal
+
+    - name: ALLOW VM TO ATTACH TO NETWORK
+      become: yes
+      lineinfile:
+        path: /etc/qemu/bridge.conf
+        line: "allow {{ network_bridge }}"
+
+    - name: CREATE VM DISK
+      shell: "qemu-img create -f qcow2 -o size=20G {{ playbook_dir }}/../vms/kube-baremetal-0.qcow2"
+      args:
+        creates: "{{ playbook_dir }}/../vms/kube-baremetal-0.qcow2"
+
+    - name: CREATE VM
+      virt:
+        uri: "qemu:///session"
+        command: define
+        xml: "{{ lookup('template', 'vm.xml') }}"

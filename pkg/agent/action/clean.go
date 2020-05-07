@@ -14,7 +14,7 @@ import (
 )
 
 type cleanAction struct {
-	hardware *baremetalv1alpha1.BareMetalDiscoverySpec
+	hardware *baremetalv1alpha1.BareMetalDiscoveryHardware
 
 	status *Status
 
@@ -36,7 +36,7 @@ func NewCleanAction() *cleanAction {
 	return action
 }
 
-func (c *cleanAction) Do(hardware *baremetalv1alpha1.BareMetalDiscoverySpec) {
+func (c *cleanAction) Do(hardware *baremetalv1alpha1.BareMetalDiscoveryHardware) {
 	c.hardware = hardware
 	err := c.do()
 	if err != nil {
@@ -48,12 +48,12 @@ func (c *cleanAction) Do(hardware *baremetalv1alpha1.BareMetalDiscoverySpec) {
 
 func (c *cleanAction) do() error {
 	var waitGroup sync.WaitGroup
-	waitGroup.Add(len(c.hardware.Hardware.Storage))
+	waitGroup.Add(len(c.hardware.Storage))
 
-	errorChan := make(chan error, len(c.hardware.Hardware.Storage))
+	errorChan := make(chan error, len(c.hardware.Storage))
 
 	c.logger.Info("Starting clean action")
-	for _, storage := range c.hardware.Hardware.Storage {
+	for _, storage := range c.hardware.Storage {
 		go func(storage baremetalv1alpha1.BareMetalDiscoveryHardwareStorage) {
 			defer waitGroup.Done()
 			errorChan <- c.cleanDrive(storage)

@@ -512,10 +512,15 @@ func (r *BareMetalHardwareReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 			return ctrl.Result{Requeue: true}, nil
 		}
 
+		if bmd.Status.Hardware == nil {
+			r.Recorder.Eventf(bmh, corev1.EventTypeWarning, baremetalv1alpha1.BareMetalHardwareDiscoveryNoHardwareEventReason, "Discovery for the systemUUID of %s does not have any hardware set yet", bmh.Spec.SystemUUID)
+			return ctrl.Result{Requeue: true}, nil
+		}
+
 		// TODO: discovery hardware may be nil due to "secure" discovery
 		//  check if it's nil and event and requeue if it is
 
-		bmh.Status.Hardware = bmd.Spec.Hardware.DeepCopy()
+		bmh.Status.Hardware = bmd.Status.Hardware.DeepCopy()
 		err = r.Status().Update(ctx, bmh)
 		if err != nil {
 			return ctrl.Result{}, err

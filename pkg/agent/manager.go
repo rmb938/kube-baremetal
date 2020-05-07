@@ -18,7 +18,7 @@ import (
 )
 
 type Manager struct {
-	hardware *baremetalv1alpha1.BareMetalDiscoverySpec
+	hardware *baremetalv1alpha1.BareMetalDiscoveryHardware
 
 	discoveryURL string
 	systemUUID   types.UID
@@ -29,7 +29,7 @@ type Manager struct {
 	currentAction action.Action
 }
 
-func NewManager(hardware *baremetalv1alpha1.BareMetalDiscoverySpec, discoveryURL string, systemUUID types.UID) *Manager {
+func NewManager(hardware *baremetalv1alpha1.BareMetalDiscoveryHardware, discoveryURL string, systemUUID types.UID) *Manager {
 	return &Manager{
 		hardware: hardware,
 

@@ -9,9 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
-	"k8s.io/apimachinery/pkg/util/wait"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -100,13 +98,7 @@ func main() {
 
 	signalChan := signals.SetupSignalHandler()
 
-	go func() {
-		wait.Until(func() {
-			// TODO: heartbeat here (uuid)
-		}, 30*time.Second, signalChan)
-	}()
-
-	manager := agent.NewManager(hardware, discoveryURL, hardware.SystemUUID)
+	manager := agent.NewManager(hardware.Hardware, discoveryURL, hardware.SystemUUID)
 
 	server := agent.NewServer(":10443", manager)
 

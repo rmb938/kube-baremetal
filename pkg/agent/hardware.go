@@ -32,7 +32,12 @@ type lsblk struct {
 	BlockDevices []blockDevices `json:"blockdevices"`
 }
 
-func DiscoverHardware() (*baremetalv1alpha1.BareMetalDiscoverySpec, error) {
+type discoveryHardware struct {
+	SystemUUID types.UID                                     `json:"systemUUID"`
+	Hardware   *baremetalv1alpha1.BareMetalDiscoveryHardware `json:"hardware,omitempty"`
+}
+
+func DiscoverHardware() (*discoveryHardware, error) {
 	hostInfo, err := host.Info()
 	if err != nil {
 		return nil, fmt.Errorf("error gathering host info: %v", err)
@@ -109,7 +114,7 @@ func DiscoverHardware() (*baremetalv1alpha1.BareMetalDiscoverySpec, error) {
 		}
 	}
 
-	discovery := &baremetalv1alpha1.BareMetalDiscoverySpec{
+	discovery := &discoveryHardware{
 		SystemUUID: types.UID(hostInfo.HostID),
 		Hardware: &baremetalv1alpha1.BareMetalDiscoveryHardware{
 			Ram: memQty,

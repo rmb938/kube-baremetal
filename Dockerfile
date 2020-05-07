@@ -10,14 +10,10 @@ COPY go.sum go.sum
 RUN go mod download
 
 # Copy the go source
-COPY main.go main.go
 COPY api/ api/
 COPY apis/ apis/
 COPY cmd/ cmd/
 COPY pkg/ pkg/
-COPY controllers/ controllers/
-COPY webhook/ webhook/
-COPY webhooks/ webhooks/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags '-extldflags "-static"' -o agent cmd/agent/main.go
@@ -39,5 +35,5 @@ COPY --from=alpine /out /
 
 COPY --from=builder /workspace/agent .
 
-ENTRYPOINT []
+ENTRYPOINT [ "/agent" ]
 CMD []

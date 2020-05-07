@@ -67,10 +67,11 @@ type BareMetalEndpointSpec struct {
 type BareMetalEndpointStatusPhase string
 
 const (
-	BareMetalEndpointStatusPhasePending   BareMetalEndpointStatusPhase = "Pending"
-	BareMetalEndpointStatusPhaseAddressed BareMetalEndpointStatusPhase = "Addressed"
-	BareMetalEndpointStatusPhaseDeleting  BareMetalEndpointStatusPhase = "Deleting"
-	BareMetalEndpointStatusPhaseDeleted   BareMetalEndpointStatusPhase = "Deleted"
+	BareMetalEndpointStatusPhasePending    BareMetalEndpointStatusPhase = "Pending"
+	BareMetalEndpointStatusPhaseAddressing BareMetalEndpointStatusPhase = "Addressing"
+	BareMetalEndpointStatusPhaseAddressed  BareMetalEndpointStatusPhase = "Addressed"
+	BareMetalEndpointStatusPhaseDeleting   BareMetalEndpointStatusPhase = "Deleting"
+	BareMetalEndpointStatusPhaseDeleted    BareMetalEndpointStatusPhase = "Deleted"
 )
 
 type BareMetalEndpointStatusAddress struct {

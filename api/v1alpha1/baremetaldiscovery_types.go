@@ -102,24 +102,24 @@ type BareMetalDiscoverySpec struct {
 
 	// +kubebuilder:validation:Required
 	SystemUUID types.UID `json:"systemUUID"`
-
-	// The hardware that the discovered system contains
-	// +kubebuilder:validation:Optional
-	Hardware *BareMetalDiscoveryHardware `json:"hardware,omitempty"`
 }
 
 // BareMetalDiscoveryStatus defines the observed state of BareMetalDiscovery
 type BareMetalDiscoveryStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// The hardware that the discovered system contains
+	// +kubebuilder:validation:Optional
+	Hardware *BareMetalDiscoveryHardware `json:"hardware,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster,shortName=bmd
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="CPU Model",type=string,JSONPath=`.spec.hardware.cpu.modelName`
-// +kubebuilder:printcolumn:name="CPU Count",type=string,JSONPath=`.spec.hardware.cpu.cpus`
-// +kubebuilder:printcolumn:name="Ram",type=string,JSONPath=`.spec.hardware.ram`
+// +kubebuilder:printcolumn:name="CPU Model",type=string,JSONPath=`.status.hardware.cpu.modelName`
+// +kubebuilder:printcolumn:name="CPU Count",type=string,JSONPath=`.status.hardware.cpu.cpus`
+// +kubebuilder:printcolumn:name="Ram",type=string,JSONPath=`.status.hardware.ram`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // BareMetalDiscovery is the Schema for the baremetaldiscoveries API
