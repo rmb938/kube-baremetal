@@ -4,13 +4,6 @@
   vars:
     network_bridge: kbm0
   tasks:
-    - name: DOWNLOAD IPXE
-      get_url:
-        url: http://boot.ipxe.org/ipxe.iso
-        checksum: sha256:6a4709ae5632e059247deaa3089101560b121086c1a6484d017bcaa8dcbbb548
-        dest: "{{ playbook_dir }}/../vms/ipxe.iso"
-        mode: 0644
-
     - name: SETUP NETWORK
       become: yes
       virt_net:

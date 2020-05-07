@@ -27,7 +27,7 @@
         <suspend-to-disk enabled="no"/>
     </pm>
     <devices>
-        <emulator>/usr/bin/qemu-system-x86_64</emulator>
+        <emulator>/usr/bin/qemu-kvm</emulator>
         <disk type="file" device="disk">
             <driver name="qemu" type="qcow2"/>
             <source file="{{ playbook_dir }}/../vms/kube-baremetal-0.qcow2"/>
