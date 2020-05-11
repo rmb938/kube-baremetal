@@ -140,7 +140,7 @@ func (s *server) image(c *gin.Context) {
 	}
 
 	imageAction := action.NewImageAction(
-		input.ImageURL,
+		input.Image,
 		input.DiskPath,
 		input.MetadataContents,
 		input.NetworkDataContents,

@@ -624,8 +624,8 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			r.Recorder.Eventf(bmh, corev1.EventTypeNormal, baremetalv1alpha1.BareMetalInstanceImagingEventReason, "Imaging the BareMetalInstance %s onto the hardware", bmi.Name)
 
 			imageRequest := action.ImageRequest{
-				ImageURL: "https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-2003.raw.tar.gz",
-				// ImageURL: "https://download.fedoraproject.org/pub/fedora/linux/releases/32/Cloud/x86_64/images/Fedora-Cloud-Base-32-1.6.x86_64.raw.xz",
+				// ImageURL: "https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-2003.raw.tar.gz",
+				Image:               "docker.io/rmb938/debian-vm:latest",
 				DiskPath:            fmt.Sprintf("/dev/%s", bmh.Spec.ImageDrive),
 				MetadataContents:    base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(metadata))),
 				NetworkDataContents: base64.StdEncoding.EncodeToString(networkDataBytes),

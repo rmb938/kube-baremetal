@@ -5,8 +5,8 @@ metadata:
 spec:
   cidr: 192.168.23.0/24
   gateway: 192.168.23.254
-  start: 192.168.23.50
-  end: 192.168.23.100
+  start: 192.168.23.100
+  end: 192.168.23.200
   nameservers:
     - 192.168.23.254
   search: []

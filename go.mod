@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
-	github.com/diskfs/go-diskfs v0.0.0-20200223081852-30669c4af6d4
+	github.com/diskfs/go-diskfs v1.1.1
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/frankban/quicktest v1.10.0 // indirect
 	github.com/gin-contrib/location v0.0.1

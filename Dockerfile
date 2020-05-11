@@ -21,13 +21,18 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags '-ext
 FROM alpine:3.11 as alpine
 
 RUN mkdir -p /out/etc/apk && cp -r /etc/apk/* /out/etc/apk/
+RUN echo "@edge-testing http://dl-3.alpinelinux.org/alpine/edge/testing" >> /out/etc/apk/repositories
 
 RUN apk -U add --no-cache --initdb -p /out \
   alpine-baselayout \
   ca-certificates \
   util-linux \
   sgdisk \
-  coreutils
+  coreutils \
+  xfsprogs \
+  dosfstools \
+  parted \
+  podman@edge-testing
 
 FROM scratch
 WORKDIR /

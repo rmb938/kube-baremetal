@@ -355,45 +355,10 @@ func (s *server) discover(c *gin.Context) {
 		return
 	}
 
-	// TODO: find the ClusterBareMetalHardware
-	//  if exists don't do anything else
-
-	hardwareList := &baremetalv1alpha1.BareMetalHardwareList{}
-	err := s.Client.List(context.Background(), hardwareList, client.MatchingFields{"spec.systemUUID": string(input.SystemUUID)})
-	if err != nil {
-		if apiError, ok := err.(apierrors.APIStatus); ok {
-			if apiError.Status().Code == 0 {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			} else {
-				c.JSON(int(apiError.Status().Code), apiError.Status())
-			}
-			c.Abort()
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		c.Abort()
-		return
-	}
-
-	switch len(hardwareList.Items) {
-	case 0:
-		// no hardware found so continue
-		break
-	case 1:
-		// one hardware found so we are done
-		c.Status(http.StatusNoContent)
-		return
-	default:
-		// multiple hardware found so error
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "hardware already exists but multiple times, someone messed up."})
-		c.Abort()
-		return
-	}
-
 	var bmd *baremetalv1alpha1.BareMetalDiscovery
 
 	discoveryList := &baremetalv1alpha1.BareMetalDiscoveryList{}
-	err = s.Client.List(context.Background(), discoveryList, client.MatchingFields{"spec.systemUUID": string(input.SystemUUID)})
+	err := s.Client.List(context.Background(), discoveryList, client.MatchingFields{"spec.systemUUID": string(input.SystemUUID)})
 	if err != nil {
 		if apiError, ok := err.(apierrors.APIStatus); ok {
 			if apiError.Status().Code == 0 {

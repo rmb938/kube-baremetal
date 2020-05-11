@@ -35,6 +35,8 @@ services:
   - name: dhcpcd
     image: linuxkit/dhcpcd:v0.7
     command: ["/sbin/dhcpcd", "--nobackground", "-f", "/dhcpcd.conf", "eth0"]
+  - name: acpid
+    image: linuxkit/acpid:v0.7
   - name: getty
     image: linuxkit/getty:v0.7
     env:

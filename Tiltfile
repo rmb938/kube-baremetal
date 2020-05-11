@@ -27,7 +27,9 @@ def deploy_baremetal_manager():
             "controllers",
             "webhook",
             "webhooks",
-            "pkg"
+            "pkg",
+            "go.mod",
+            "go.sum"
         ],
     )
 
