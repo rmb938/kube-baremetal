@@ -10,8 +10,6 @@ The following images have been tested and known to work.
     * Filename: `CentOS-7-x86_64-GenericCloud-${VERSION}.raw.tar.gz`
 * Fedora 32 - https://download.fedoraproject.org/pub/fedora/linux/releases/32/Cloud/x86_64/images/
     * Filename: `Fedora-Cloud-Base-32-${VERSION}.x86_64.raw.xz`
-* Debian 10 - https://cloud.debian.org/images/cloud/OpenStack/current-10/
-    * Filename: `debian-10-openstack-amd64.raw`
 
 ### Image Requirements
 
@@ -120,7 +118,7 @@ There is probably a solution to easily solve this, however I do not have the res
 
 The following images are supported but require modification to work.
 
-* Ubuntu Focal (18.04) - https://cloud-images.ubuntu.com/bionic/20200507/
+* Ubuntu Bionic (18.04) - https://cloud-images.ubuntu.com/bionic/20200507/
     * Filename: `bionic-server-cloudimg-amd64.img`
     * Needs to be converted to a raw image
         ```shell script
@@ -139,6 +137,10 @@ The following cloud images are not recommended due to various bugs or issues.
         ```
     * When booting the machine, it always reboots twice and takes a long time to boot.
     * Constantly complains about `blk_update_request: operation not supported (WRITE_ZEROS)` on nvme boot drive
+* Debian 10 - https://cloud.debian.org/images/cloud/buster/${VERSION}/
+    * Filename: `debian-10-generic-amd64-${VERSION}-260.tar.xz`
+    * Network interfaces always use DHCP, they never use the static IP assigned by cloud-init
+    * Trying to work with the distribution maintainers to get something that works
 
 ## Unsupported Cloud Images
 
