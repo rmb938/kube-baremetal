@@ -140,8 +140,9 @@ The following cloud images are not recommended due to various bugs or issues.
 * Debian 10 - https://cloud.debian.org/images/cloud/buster/${VERSION}/
     * Filename: `debian-10-generic-amd64-${VERSION}-260.tar.xz`
     * Network interfaces always use DHCP, they never use the static IP assigned by cloud-init
-    * Trying to work with the distribution maintainers to get something that works
-
+        * Bug: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=947351
+        * Before this image can be moved to recommended this bug needs to be fixed
+        
 ## Unsupported Cloud Images
 
 The following images are not compatible and are not supported.

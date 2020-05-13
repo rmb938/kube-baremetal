@@ -626,7 +626,6 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			imageRequest := action.ImageRequest{
 				ImageURL: "https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-2003.raw.tar.gz",
 				// ImageURL: "https://download.fedoraproject.org/pub/fedora/linux/releases/32/Cloud/x86_64/images/Fedora-Cloud-Base-32-1.6.x86_64.raw.xz",
-				// ImageURL:            "https://cloud.debian.org/images/cloud/buster/20200511-260/debian-10-generic-amd64-20200511-260.tar.xz",
 				DiskPath:            fmt.Sprintf("/dev/%s", bmh.Spec.ImageDrive),
 				MetadataContents:    base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(metadata))),
 				NetworkDataContents: base64.StdEncoding.EncodeToString(networkDataBytes),
