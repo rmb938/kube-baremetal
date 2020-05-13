@@ -10,6 +10,8 @@ The following images have been tested and known to work.
     * Filename: `CentOS-7-x86_64-GenericCloud-${VERSION}.raw.tar.gz`
 * Fedora 32 - https://download.fedoraproject.org/pub/fedora/linux/releases/32/Cloud/x86_64/images/
     * Filename: `Fedora-Cloud-Base-32-${VERSION}.x86_64.raw.xz`
+* Debian 11 - https://cloud.debian.org/images/cloud/bullseye/${VERSION}/
+    * Filename: `debian-11-generic-amd64-${VERSION}.tar.xz`
 
 ### Image Requirements
 
@@ -138,7 +140,7 @@ The following cloud images are not recommended due to various bugs or issues.
     * When booting the machine, it always reboots twice and takes a long time to boot.
     * Constantly complains about `blk_update_request: operation not supported (WRITE_ZEROS)` on nvme boot drive
 * Debian 10 - https://cloud.debian.org/images/cloud/buster/${VERSION}/
-    * Filename: `debian-10-generic-amd64-${VERSION}-260.tar.xz`
+    * Filename: `debian-10-generic-amd64-${VERSION}.tar.xz`
     * Network interfaces always use DHCP, they never use the static IP assigned by cloud-init
         * Bug: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=947351
         * Before this image can be moved to recommended this bug needs to be fixed
