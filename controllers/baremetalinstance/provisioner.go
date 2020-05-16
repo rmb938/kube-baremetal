@@ -625,7 +625,7 @@ func (r *Provisioner) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 			imageRequest := action.ImageRequest{
 				// ImageURL: "https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-2003.raw.tar.gz",
-				Image:               "docker.io/rmb938/debian-vm:latest",
+				Image:               "docker.io/rmb938/centos-cloud:latest",
 				DiskPath:            fmt.Sprintf("/dev/%s", bmh.Spec.ImageDrive),
 				MetadataContents:    base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(metadata))),
 				NetworkDataContents: base64.StdEncoding.EncodeToString(networkDataBytes),

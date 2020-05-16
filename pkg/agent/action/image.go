@@ -63,7 +63,7 @@ const (
 	BootPartitionSize  int    = 500 * 1024 * 1024 // 500MB
 
 	MbrBootPartitionMountPath string = "/boot"
-	GptBootPartitionMountPath string = "/boot"
+	GptBootPartitionMountPath string = "/boot/efi"
 
 	RootFSPartitionSize    int = 10 * 1024 * 1024 * 1024 // 10GB
 	CloudInitPartitionSize int = 64 * 1024 * 1024        // 64 MB
@@ -126,12 +126,12 @@ func (i *imageAction) do() error {
 	defer destDisk.File.Close()
 
 	// mbr partitions
-	//  /boot - xfs - label BOOT
-	//  / - xfs - label rootfs
+	//  /boot - ext4 - label BOOT
+	//  / - ext4 - label rootfs
 	//  none - vfat - label config-2
 	// gpt partitions
 	//  /boot/efi - vfat - label BOOT
-	//  / - xfs - label rootfs
+	//  / - ext4 - label rootfs
 	//  none - vfat - label config-2
 
 	bootPartitionSectors := uint32(BootPartitionSize) / uint32(destDisk.LogicalBlocksize)
@@ -252,7 +252,7 @@ func (i *imageAction) do() error {
 	i.logger.Info("Creating filesystem on boot partition")
 	bootPartitionPath := fmt.Sprintf("/dev/%s", lsblk.BlockDevices[0].Children[0].Name)
 	// mkfsOutput, err := exec.Command("mkfs.vfat", "-F32", "-n", BootPartitionLabel, bootPartitionPath).CombinedOutput()
-	mkfsOutput, err := exec.Command("mkfs.xfs", "-f", "-L", BootPartitionLabel, bootPartitionPath).CombinedOutput()
+	mkfsOutput, err := exec.Command("mkfs.ext4", "-L", BootPartitionLabel, bootPartitionPath).CombinedOutput()
 	if err != nil {
 		i.logger.Error(err, "error creating filesystem on boot partition", "partition", bootPartitionPath, "output", string(mkfsOutput))
 		return fmt.Errorf("error creating filesystem on boot partition %s: %v: %s", bootPartitionPath, err, string(mkfsOutput))
@@ -260,14 +260,14 @@ func (i *imageAction) do() error {
 
 	i.logger.Info("Creating filesystem on rootfs partition")
 	imagePartitionPath := fmt.Sprintf("/dev/%s", lsblk.BlockDevices[0].Children[1].Name)
-	mkfsOutput, err = exec.Command("mkfs.xfs", "-f", "-L", "rootfs", imagePartitionPath).CombinedOutput()
+	mkfsOutput, err = exec.Command("mkfs.ext4", "-L", "rootfs", imagePartitionPath).CombinedOutput()
 	if err != nil {
 		i.logger.Error(err, "error creating filesystem on rootfs partition", "partition", imagePartitionPath, "output", string(mkfsOutput))
 		return fmt.Errorf("error creating filesystem on rootfs partition %s: %v: %s", imagePartitionPath, err, string(mkfsOutput))
 	}
 
 	i.logger.Info("Mounting image partition")
-	err = syscall.Mount(imagePartitionPath, "/mnt", "xfs", 0, "")
+	err = syscall.Mount(imagePartitionPath, "/mnt", "ext4", 0, "")
 	if err != nil {
 		i.logger.Error(err, "error mounting image partition")
 		return fmt.Errorf("error mounting image partition %v", err)
@@ -283,7 +283,7 @@ func (i *imageAction) do() error {
 	}
 
 	// err = syscall.Mount(imagePartitionPath, fmt.Sprintf("/mnt%s", GptBootPartitionMountPath), "vfat", 0, "")
-	err = syscall.Mount(bootPartitionPath, bootPartitionMountPath, "xfs", 0, "")
+	err = syscall.Mount(bootPartitionPath, bootPartitionMountPath, "ext4", 0, "")
 	if err != nil {
 		i.logger.Error(err, "error mounting boot partition")
 		return fmt.Errorf("error mounting boot partition %v", err)
@@ -415,28 +415,14 @@ func (i *imageAction) do() error {
 
 	// TODO: change this for efi /boot/efi and vfat
 	fstab := fmt.Sprintf(`
-LABEL=rootfs / xfs defaults 1 1
-LABEL=%s %s xfs defaults 1 2
+LABEL=rootfs / ext4 defaults 1 1
+LABEL=%s %s ext4 defaults 1 2
 `, BootPartitionLabel, MbrBootPartitionMountPath)
 
 	err = ioutil.WriteFile("/mnt/etc/fstab", []byte(fstab), 0664)
 	if err != nil {
 		i.logger.Error(err, "error writting fstab")
 		return fmt.Errorf("error writting fstab: %v", err)
-	}
-
-	i.logger.Info("Writing grub device map")
-	err = os.MkdirAll("/mnt/boot/grub/", 0755)
-	if err != nil {
-		i.logger.Error(err, "error making grub directory")
-		return fmt.Errorf("error making grub directory: %v", err)
-	}
-
-	deviceMap := fmt.Sprintf("(hd0) %s", i.DiskPath)
-	err = ioutil.WriteFile("/mnt/boot/grub/device.map", []byte(deviceMap), 0700)
-	if err != nil {
-		i.logger.Error(err, "error grub device map")
-		return fmt.Errorf("error grub device map: %v", err)
 	}
 
 	i.logger.Info("Doing bind mounts")
@@ -459,10 +445,12 @@ LABEL=%s %s xfs defaults 1 2
 	i.logger.Info("Doing grub stuffs")
 	// TODO: this may change with efi
 
+	// TODO: find the correct grub binaries
+	// grub2-* vs grub-*
+	// /boot/grub2 may also be different
 	grubCommands := []*exec.Cmd{
-		exec.Command("chroot", "/mnt", "update-grub"),
-		exec.Command("chroot", "/mnt", "grub-install", "--force", i.DiskPath),
-		exec.Command("chroot", "/mnt", "grub-mkdevicemap"),
+		exec.Command("chroot", "/mnt", "grub2-mkconfig", "-o", "/boot/grub2/grub.cfg"),
+		exec.Command("chroot", "/mnt", "grub2-install", "--force", i.DiskPath),
 	}
 
 	for _, grubCmd := range grubCommands {

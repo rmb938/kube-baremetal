@@ -29,7 +29,7 @@ RUN apk -U add --no-cache --initdb -p /out \
   util-linux \
   sgdisk \
   coreutils \
-  xfsprogs \
+  e2fsprogs \
   dosfstools \
   parted \
   podman@edge-testing
